@@ -17,18 +17,16 @@ class LinearLoRAModule(BaseLoRAModule):
         # bias: bool = False,
         alpha: float = 1.0,
         dropout: float = 0.0,
-        device: Optional[Tensor.device] = None,
-        dtype: Optional[Tensor.dtype] = None,
     ):
         self.in_features = in_features
         self.out_features = out_features
         self.rank = rank
 
-        self.in_proj = nn.Linear(
-            in_features=in_features, out_features=rank, device=device, dtype=dtype
-        )
+        # Define Linear projections for LoRA layers
+        self.in_proj = nn.Linear(in_features=in_features, out_features=rank, bias=False)
+
         self.out_proj = nn.Linear(
-            in_features=rank, out_features=out_features, device=device, dtype=dtype
+            in_features=rank, out_features=out_features, bias=False
         )
 
         # Set the droput probability
@@ -57,6 +55,30 @@ class LinearLoRAModule(BaseLoRAModule):
         # Multiply by output projection layer
         return x @ self.out_proj
 
+    def merge(self, module, inplace=False):
+        with Tensor.no_grad():
+            lora_weight = self.in_proj.matmul(self.out_proj).transpose()
+
+            if inplace:
+                module.weight.data += lora_weight
+                return module
+
+            out = nn.Linear(
+                in_features=module.in_features,
+                out_features=module.out_features,
+                bias=module.bias is not None,
+                device=module.weight.device,
+                dtype=module.weight.dtype,
+            )
+            out.weight.data = module.weight.data + lora_weight
+            out.bias = module.bias
+            return out
+
+    @property
+    def weight(self):
+        return self.in_proj.matmul(self.out_proj).transpose()
+
+    """ 
     def merge(self, module: nn.Linear, inplace: bool = False) -> nn.Linear:
         # einstein notation:
         # - i: input features
@@ -83,3 +105,4 @@ class LinearLoRAModule(BaseLoRAModule):
     @property
     def weight(self) -> Tensor:
         return torch.einsum("i r, r o -> o i", self.in_proj, self.out_proj)
+    """

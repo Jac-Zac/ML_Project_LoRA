@@ -5,24 +5,29 @@ from tinygrad.tensor import Tensor
 
 from lora_tinygrad import LoRA
 
-
-class TinyNet:
-    def __init__(self):
-        self.l1 = nn.Linear(784, 128, bias=False)
-        self.l2 = nn.Linear(128, 10, bias=False)
-
-    def __call__(self, x):
-        x = self.l1(x)
-        x = x.leakyrelu()
-        x = self.l2(x)
-        return x
+# class TinyNet:
+#     def __init__(self):
+#         self.l1 = nn.Linear(784, 128, bias=False)
+#         self.l2 = nn.Linear(128, 10, bias=False)
+#
+#     def __call__(self, x):
+#         x = self.l1(x)
+#         x = x.leakyrelu()
+#         x = self.l2(x)
+#         return x
 
 
 # Wrap your model with LoRA
-model = TinyNet()
-# print(nn.state.get_parameters(model))
-# print(nn.state.get_state_dict(model))
+# model = TinyNet()
+
+# Super simple linear model
+model = nn.Linear(784, 2, bias=False)
+
+# Apply LoRA weighst to the model
 lora_model = LoRA.from_module(model, rank=5)
+
+print(f"\nPrinting model: {nn.state.get_state_dict(model)}\n")
+print(f"Printing lora model: {nn.state.get_state_dict(lora_model)}\n")
 
 # print(model)
 # LoRA(
@@ -47,7 +52,8 @@ y = model(x)
 print(f"Printing model Output: {y.numpy() = }")
 
 y = lora_model(x)
-
+# # Print the predcitions
+# print(f"Printing model Output: {y.numpy() = }")
 
 # # compute loss, backprop, etc...
 #

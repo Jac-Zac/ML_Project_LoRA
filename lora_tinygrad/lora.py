@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from copy import deepcopy
+
 # from itertools import chain
-from typing import (Generic, Iterable, Literal, Optional, Tuple, Type, Union,
-                    overload)
+from typing import Generic, Iterable, Literal, Optional, Tuple, Type, Union, overload
 
 from tinygrad import Tensor, nn
 
@@ -78,12 +78,11 @@ class LoRA:
 
     @classmethod
     def _from_linear(cls, module: nn.Linear, rank: int) -> LoRA:
-        out_size, in_size = module.weight.shape
-        device = module.weight.device
-        dtype = module.weight.dtype
-        lora_module = LinearLoRAModule(
-            in_size, out_size, rank=rank, device=device, dtype=dtype
-        )
+        # Get the input and output size
+        out_size, in_size = nn.state.get_state_dict(module)["weight"].shape
+
+        # Initialize a new LoRA layer
+        lora_module = LinearLoRAModule(in_size, out_size, rank=rank)
         return LoRA(module, lora_module)
 
     # @classmethod
