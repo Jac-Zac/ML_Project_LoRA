@@ -38,18 +38,17 @@ if __name__ == "__main__":
 
     y = lora_model(x)
     print(y.requires_grad)
-
-    lora_model.disable_lora()
-    y = lora_model(x)
-    print(y.requires_grad)
+    #
+    # lora_model.disable_lora()
+    # y = lora_model(x)
+    # print(y.requires_grad)
 
     # # Re-enable
-    lora_model.enable_lora()
-    y = lora_model(x)
-    print(y.requires_grad)
+    # lora_model.enable_lora()
+    # y = lora_model(x)
+    # print(y.requires_grad)
 
-    # print(nn.state.get_parameters(lora_model))
-    # print(f"\nPrinting model: {nn.state.get_state_dict(model)}\n")
+    print(f"\nPrinting model: {nn.state.get_state_dict(model)}\n")
     #
     # for lr, epochs in zip(lrs, epochss):
     #     # optimizer = nn.optim.Adam(nn.state.get_parameters(model), lr=lr)

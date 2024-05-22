@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from itertools import chain
-from typing import (Generic, Iterable, Literal, Optional, Tuple, Type, Union,
-                    overload)
+from typing import Generic, Iterable, Literal, Optional, Tuple, Type, Union, overload
 
 from tinygrad import Tensor, nn
 
@@ -14,6 +13,7 @@ from .modules.linear import LinearLoRAModule
 def get_state_layers_names(model):
     # Get everything before .weight
     return [name.split(".weight")[0] for name in nn.state.get_state_dict(model)]
+    # return [name for name in nn.state.get_state_dict(model)]
 
 
 # from lora_tinygrad.modules.attention import MultiheadAttentionLoRAModule
@@ -37,10 +37,10 @@ class LoRA:
         self.lora_module = lora_module
         self.enabled = enabled and lora_module is not None
 
-        if not enabled:
-            self.disable_lora()
-        else:
-            self.enable_lora()
+        # if not enabled:
+        #     self.disable_lora()
+        # else:
+        #     self.enable_lora()
 
     def __call__(self, x: Tensor, *args, **kwargs) -> Tensor:
 
@@ -220,8 +220,9 @@ def disable_lora(module: Union[Type, LoRA]) -> None:
     print(f"{type(module)}")
 
     for name in get_state_layers_names(module):
+        print(name)
         # print("Disabeling lora maybe ?")
-        disable_lora(getattr(module, name))
+        # disable_lora(getattr(module, name))
 
     # print("Disabeling lora")
     if isinstance(module, LoRA):
