@@ -55,6 +55,7 @@ model = nn.Linear(784, 2, bias=False)
 lora_model = LoRA.from_module(model, rank=5)
 
 print(f"\nPrinting model: {nn.state.get_state_dict(model)}\n")
+
 print(f"Printing lora model: {nn.state.get_state_dict(lora_model)}\n")
 
 # Train or predict as usual.

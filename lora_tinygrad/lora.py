@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from copy import deepcopy
-
 # from itertools import chain
-from typing import Generic, Iterable, Literal, Optional, Tuple, Type, Union, overload
+from typing import (Generic, Iterable, Literal, Optional, Tuple, Type, Union,
+                    overload)
 
 from tinygrad import Tensor, nn
 
@@ -11,8 +11,8 @@ from .modules.base import BaseLoRAModule
 from .modules.linear import LinearLoRAModule
 
 
-def get_state_layers(model):
-    return [name for name in nn.state.get_state_dict(model)]
+def get_state_layers_names(model):
+    return [name.split(".")[0] for name in nn.state.get_state_dict(model)]
 
 
 # from lora_tinygrad.modules.attention import MultiheadAttentionLoRAModule
@@ -51,6 +51,7 @@ class LoRA:
         # Enable the gradient again
         Tensor.no_grad = False
 
+        # IF lora is enable also add the lora
         if self.enabled and self.lora_module is not None:
             y = y + self.lora_module(x)
 
@@ -156,18 +157,11 @@ class LoRA:
         # elif isinstance(module, nn.MultiheadAttention):
         #     return LoRA._from_multihead_attention(module, rank)  # type: ignore
 
-        for name in get_state_layers(module):
-            print(nn.state.get_state_dict(module)[name])
+        # for name in get_state_layers_names(module):
+        # Recursively create the LoRA layers modifying the original layers until you get to known layers
+        module.l1 = cls.from_module(module.l1, rank, enabled=enabled, is_root=False)
 
-        # for name, child in module.named_children():
-        #     child = cast(ModuleType, child)
-        #     module.get_state_dict([name] = cls.from_module(
-        #         child, rank, enabled=enabled, is_root=False
-        #     )
-        # module.get_state_dict([name] = cls.from_module(
-        #     child, rank, enabled=enabled, is_root=False
-        # )
-
+        # Original model is root
         if is_root:
             return LoRA(module, None, enabled=enabled)
         else:
