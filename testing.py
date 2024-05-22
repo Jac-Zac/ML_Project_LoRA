@@ -28,16 +28,40 @@ if __name__ == "__main__":
 
     X_train, Y_train, X_test, Y_test = fetch_mnist()
 
-    # steps = len(X_train) // BS
-    # lossfn = lambda out, y: out.sparse_categorical_crossentropy(y)
+    steps = len(X_train) // BS
+    lossfn = lambda out, y: out.sparse_categorical_crossentropy(y)
+    x = Tensor.randn(1, 28, 28).reshape(-1)
 
     model = TinyNet()
     lora_model = LoRA.from_module(model, rank=5)
+    print(model(x).numpy())
 
-    print(nn.state.get_parameters(lora_model))
+    y = lora_model(x)
+    print(y.requires_grad)
 
+    lora_model.disable_lora()
+    y = lora_model(x)
+    print(y.requires_grad)
+
+    # # Re-enable
+    lora_model.enable_lora()
+    y = lora_model(x)
+    print(y.requires_grad)
+
+    # print(nn.state.get_parameters(lora_model))
+    # print(f"\nPrinting model: {nn.state.get_state_dict(model)}\n")
+    #
     # for lr, epochs in zip(lrs, epochss):
-    #     optimizer = nn.optim.Adam(nn.state.get_parameters(model), lr=lr)
+    #     # optimizer = nn.optim.Adam(nn.state.get_parameters(model), lr=lr)
+    #     optimizer = nn.optim.Adam(
+    #         [
+    #             model.l1.lora_module.in_proj,
+    #             model.l1.lora_module.out_proj,
+    #             model.l2.lora_module.in_proj,
+    #             model.l2.lora_module.out_proj,
+    #         ],
+    #         lr=lr,
+    #     )
     #     for epoch in range(1, epochs + 1):
     #         train(model, X_train, Y_train, optimizer, steps=steps, lossfn=lossfn, BS=BS)
     #
@@ -47,37 +71,46 @@ if __name__ == "__main__":
     #     )
     #
     #     print(accuracy)
-    # opt = nn.optim.SGD(nn.state.get_parameters(lora_model), lr=3e-4)
+    #
+    # opt = nn.optim.SGD(nn.state.get_parameters(model), lr=3e-4)
+    #
+    # # Get predictions for the lora model
+    # print(lora_model(x).numpy())
+    # # Remove LoRA weights
+    # original_model = lora_model.remove_lora(inplace=False)  # default: inplace=False
+    #
+    # # Get predictions for the original model
+    # print(original_model(x).numpy())
 
-    # with Tensor.train():
-    #     for step in range(1000):
-    #         # random sample a batch
-    #         samp = np.random.randint(0, X_train.shape[0], size=(64))
-    #         batch = Tensor(X_train[samp], requires_grad=False)
-    #         # get the corresponding labels
-    #         labels = Tensor(Y_train[samp])
-    #
-    #         # forward pass
-    #         out = lora_model(batch)
-    #
-    #         # compute loss
-    #         loss = Tensor.sparse_categorical_crossentropy(out, labels)
-    #
-    #         # zero gradients
-    #         opt.zero_grad()
-    #
-    #         # backward pass
-    #         loss.backward()
-    #
-    #         # update parameters
-    #         opt.step()
-    #
-    #         # calculate accuracy
-    #         pred = out.argmax(axis=-1)
-    #         acc = (pred == labels).mean()
-    #
-    #         if step % 100 == 0:
-    # print(f"Step {step+1} | Loss: {loss.numpy()} | Accuracy: {acc.numpy()}")
+# with Tensor.train():
+#     for step in range(1000):
+#         # random sample a batch
+#         samp = np.random.randint(0, X_train.shape[0], size=(64))
+#         batch = Tensor(X_train[samp], requires_grad=False)
+#         # get the corresponding labels
+#         labels = Tensor(Y_train[samp])
+#
+#         # forward pass
+#         out = lora_model(batch)
+#
+#         # compute loss
+#         loss = Tensor.sparse_categorical_crossentropy(out, labels)
+#
+#         # zero gradients
+#         opt.zero_grad()
+#
+#         # backward pass
+#         loss.backward()
+#
+#         # update parameters
+#         opt.step()
+#
+#         # calculate accuracy
+#         pred = out.argmax(axis=-1)
+#         acc = (pred == labels).mean()
+#
+#         if step % 100 == 0:
+# print(f"Step {step+1} | Loss: {loss.numpy()} | Accuracy: {acc.numpy()}")
 
 
 # Super simple linear model

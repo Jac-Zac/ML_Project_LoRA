@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
-# from itertools import chain
+from itertools import chain
 from typing import (Generic, Iterable, Literal, Optional, Tuple, Type, Union,
                     overload)
 
@@ -12,7 +12,8 @@ from .modules.linear import LinearLoRAModule
 
 
 def get_state_layers_names(model):
-    return [name.split(".")[0] for name in nn.state.get_state_dict(model)]
+    # Get everything before .weight
+    return [name.split(".weight")[0] for name in nn.state.get_state_dict(model)]
 
 
 # from lora_tinygrad.modules.attention import MultiheadAttentionLoRAModule
@@ -37,11 +38,9 @@ class LoRA:
         self.enabled = enabled and lora_module is not None
 
         if not enabled:
-            # self.disable_lora()
-            pass
+            self.disable_lora()
         else:
-            # self.enable_lora()
-            pass
+            self.enable_lora()
 
     def __call__(self, x: Tensor, *args, **kwargs) -> Tensor:
 
@@ -56,6 +55,8 @@ class LoRA:
             y = y + self.lora_module(x)
 
         return y
+
+    # I have to only return the lora parameters
 
     # def parameters(self) -> Iterable[nn.Parameter]:  # type: ignore[override]
     #     def _get_lora_parameters(module: nn.Module):
@@ -186,7 +187,7 @@ class LoRA:
     #         return self.module.weight + self.lora_module.weight
     #     else:
     #         return self.module.weight
-    #
+
     # @property
     # def bias(self) -> Optional[Tensor]:
     #     if not hasattr(self.module, "bias"):
@@ -203,18 +204,36 @@ class LoRA:
 
 
 def enable_lora(module: Union[Type, LoRA]) -> None:
-    for child in module.children():
-        enable_lora(child)
+    for name in get_state_layers_names(module):
+        enable_lora(getattr(module, name))
     if isinstance(module, LoRA):
         module.enabled = True
 
+    # for child in module.children():
+    #     enable_lora(child)
+    # if isinstance(module, LoRA):
+    #     module.enabled = True
 
-# def disable_lora(module: Union[Type, LoRA]) -> None:
-#     for child in module.children():
-#         disable_lora(child)
-#     if isinstance(module, LoRA):
-#         module.enabled = False
-#
+
+def disable_lora(module: Union[Type, LoRA]) -> None:
+
+    print(f"{type(module)}")
+
+    for name in get_state_layers_names(module):
+        # print("Disabeling lora maybe ?")
+        disable_lora(getattr(module, name))
+
+    # print("Disabeling lora")
+    if isinstance(module, LoRA):
+        # print("Disabeling lora")
+        module.enabled = False
+
+    # for child in module.children():
+    #     disable_lora(child)
+    # if isinstance(module, LoRA):
+    #     module.enabled = False
+
+
 #
 # def merge_lora(module: Union[Type, LoRA], inplace: bool = False) -> Type:
 #     out = module if inplace else deepcopy(module)
@@ -230,14 +249,18 @@ def enable_lora(module: Union[Type, LoRA]) -> None:
 #         return out
 #
 
-# def remove_lora(module: Union[Type, LoRA], inplace: bool = False) -> Type:
-#     """Remove all LoRA modules from the model."""
-#     out = module if inplace else deepcopy(module)
-#
-#     for name, child in out.named_children():
-#         out._modules[name] = remove_lora(child, inplace=inplace)
-#
-#     if isinstance(out, LoRA):
-#         return out.module
-#     else:
-#         return out
+
+def remove_lora(module: Union[Type, LoRA], inplace: bool = False) -> Type:
+    """Remove all LoRA modules from the model."""
+    out = module if inplace else deepcopy(module)
+
+    # print(out)
+    for name in get_state_layers_names(out):
+        print(name)
+        # setattr(out, name, remove_lora(getattr(out, name), inplace=inplace))
+        # out._modules[name] = remove_lora(child, inplace=inplace)
+
+    if isinstance(out, LoRA):
+        return out.module
+    else:
+        return out
