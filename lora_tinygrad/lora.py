@@ -157,9 +157,18 @@ class LoRA:
         # elif isinstance(module, nn.MultiheadAttention):
         #     return LoRA._from_multihead_attention(module, rank)  # type: ignore
 
-        # for name in get_state_layers_names(module):
-        # Recursively create the LoRA layers modifying the original layers until you get to known layers
-        module.l1 = cls.from_module(module.l1, rank, enabled=enabled, is_root=False)
+        for name in get_state_layers_names(module):
+
+            # Recursively create the LoRA layers modifying the original layers until you get to known layers
+
+            # Beautiful code to review
+            setattr(
+                module,
+                name,
+                cls.from_module(
+                    getattr(module, name), rank, enabled=enabled, is_root=False
+                ),
+            )
 
         # Original model is root
         if is_root:
