@@ -22,30 +22,22 @@ class LinearLoRAModule(BaseLoRAModule):
         self.out_features = out_features
         self.rank = rank
 
-        self.in_proj = Tensor.zeros(in_features, rank, requires_grad=True)
-        self.out_proj = Tensor.randn(rank, out_features, requires_grad=True) * (
+        # Define Linear projections for LoRA layers
+        # NOTE: The original LoRA paper recommends multiplying the output of 'in_proj'
+        # by (alpha / rank).  This adds more computation to the forward pass, and it's
+        # mathematically equivalent to scaling 'in_proj' by (alpha / rank) ahead of
+        self.in_proj = Tensor.kaiming_uniform(in_features, rank, requires_grad=True) * (
             alpha / rank
         )
+        self.out_proj = Tensor.zeros(rank, out_features, requires_grad=True)
 
         # Testing only
         # self.in_proj = Tensor.randn(in_features, rank, requires_grad=True)
-        # self.out_proj = Tensor.randn(rank, out_features, requires_grad=True) * (
-        #     alpha / rank
-        # )
-        # # Define Linear projections for LoRA layers
-        # self.in_proj = nn.Linear(in_features=in_features, out_features=rank, bias=False)
-        #
-        # self.out_proj = nn.Linear(
-        #     in_features=rank, out_features=out_features, bias=False
-        # )
+        # self.out_proj = Tensor.randn(rank, out_features, requires_grad=True)
 
         # Set the droput probability
         self.dropout_prob = dropout
 
-        # NOTE: The original LoRA paper recommends multiplying the output of 'in_proj'
-        # by (alpha / rank).  This adds more computation to the forward pass, and it's
-        # mathematically equivalent to scaling 'in_proj' by (alpha / rank) ahead of
-        # time.  I have chosen the second option for simplicity.
         # nn.init.kaiming_uniform_(self.in_proj, alpha / rank)
         # nn.init.zeros_(self.out_proj)
 

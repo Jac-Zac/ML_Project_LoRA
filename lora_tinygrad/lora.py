@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from copy import deepcopy
+
 # from itertools import chain
-from typing import (Generic, Iterable, Literal, Optional, Tuple, Type, Union,
-                    overload)
+from typing import Generic, Iterable, Literal, Optional, Tuple, Type, Union, overload
 
 from tinygrad import Tensor, nn
 
@@ -44,10 +44,12 @@ class LoRA:
             pass
 
     def __call__(self, x: Tensor, *args, **kwargs) -> Tensor:
-        enable_grad = (self.lora_module is None) and Tensor.is_grad_enabled()
 
-        # with Tensor.set_grad_enabled(enable_grad):
+        # Run the operation without gradient if there is no lora and gradient is enable else run it with the gradient
+        Tensor.no_grad = not ((self.lora_module is None) and (Tensor.no_grad == False))
         y = self.module(x, *args, **kwargs)
+        # Enable the gradient again
+        Tensor.no_grad = False
 
         if self.enabled and self.lora_module is not None:
             y = y + self.lora_module(x)

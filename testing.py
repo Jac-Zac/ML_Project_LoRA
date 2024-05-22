@@ -49,6 +49,8 @@ class TinyNet:
 # Super simple linear model
 model = nn.Linear(784, 2, bias=False)
 
+# model = TinyNet()
+
 # Apply LoRA weighst to the model
 lora_model = LoRA.from_module(model, rank=5)
 
