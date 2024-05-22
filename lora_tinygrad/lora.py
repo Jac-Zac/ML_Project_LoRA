@@ -1,14 +1,19 @@
 from __future__ import annotations
 
 from copy import deepcopy
-
 # from itertools import chain
-from typing import Generic, Iterable, Literal, Optional, Tuple, Type, Union, overload
+from typing import (Generic, Iterable, Literal, Optional, Tuple, Type, Union,
+                    overload)
 
 from tinygrad import Tensor, nn
 
 from .modules.base import BaseLoRAModule
 from .modules.linear import LinearLoRAModule
+
+
+def get_state_layers(model):
+    return [name for name in nn.state.get_state_dict(model)]
+
 
 # from lora_tinygrad.modules.attention import MultiheadAttentionLoRAModule
 
@@ -39,15 +44,15 @@ class LoRA:
             pass
 
     def __call__(self, x: Tensor, *args, **kwargs) -> Tensor:
-        # enable_grad = (self.lora_module is None) and Tensor.is_grad_enabled()
-        #
-        # with Tensor.set_grad_enabled(enable_grad):
-        #     y = self.module(x, *args, **kwargs)
-        # if self.enabled and self.lora_module is not None:
-        #     y = y + self.lora_module(x)
+        enable_grad = (self.lora_module is None) and Tensor.is_grad_enabled()
 
-        # return y
-        return x
+        # with Tensor.set_grad_enabled(enable_grad):
+        y = self.module(x, *args, **kwargs)
+
+        if self.enabled and self.lora_module is not None:
+            y = y + self.lora_module(x)
+
+        return y
 
     # def parameters(self) -> Iterable[nn.Parameter]:  # type: ignore[override]
     #     def _get_lora_parameters(module: nn.Module):
@@ -62,19 +67,19 @@ class LoRA:
     #     return _get_lora_parameters(self)
 
     def enable_lora(self) -> None:
-        return utils.enable_lora(self)  # type: ignore
+        return enable_lora(self)  # type: ignore
 
     def disable_lora(self) -> None:
-        return utils.disable_lora(self)  # type: ignore
+        return disable_lora(self)  # type: ignore
 
     # def remove_lora(self, inplace: bool = False) -> ModuleType:
     def remove_lora(self, inplace: bool = False):
         """Remove all LoRA modules from the model."""
-        return utils.remove_lora(self, inplace=inplace)  # type: ignore
+        return remove_lora(self, inplace=inplace)  # type: ignore
 
     # def merge_lora(self: LoRA, inplace: bool = False) -> ModuleType:
     def merge_lora(self: LoRA, inplace: bool = False):
-        return utils.merge_lora(self, inplace=inplace)  # type: ignore
+        return merge_lora(self, inplace=inplace)  # type: ignore
 
     @classmethod
     def _from_linear(cls, module: nn.Linear, rank: int) -> LoRA:
@@ -149,41 +154,47 @@ class LoRA:
         # elif isinstance(module, nn.MultiheadAttention):
         #     return LoRA._from_multihead_attention(module, rank)  # type: ignore
 
+        for name in get_state_layers(module):
+            print(nn.state.get_state_dict(module)[name])
+
         # for name, child in module.named_children():
         #     child = cast(ModuleType, child)
-        #     module._modules[name] = cls.from_module(
+        #     module.get_state_dict([name] = cls.from_module(
         #         child, rank, enabled=enabled, is_root=False
         #     )
+        # module.get_state_dict([name] = cls.from_module(
+        #     child, rank, enabled=enabled, is_root=False
+        # )
 
         if is_root:
             return LoRA(module, None, enabled=enabled)
         else:
             return module
 
-    @property
-    def weight(self) -> Tensor:
-        if not hasattr(self.module, "weight"):
-            raise AttributeError("Module has no attribute 'weight'")
-
-        if self.enabled and self.lora_module is not None:
-            assert hasattr(self.lora_module, "weight")
-            return self.module.weight + self.lora_module.weight
-        else:
-            return self.module.weight
-
-    @property
-    def bias(self) -> Optional[Tensor]:
-        if not hasattr(self.module, "bias"):
-            return None
-
-        if (
-            self.enabled
-            and self.lora_module is not None
-            and hasattr(self.lora_module, "bias")
-        ):
-            return self.module.bias + self.lora_module.bias
-        else:
-            return self.module.bias
+    # @property
+    # def weight(self) -> Tensor:
+    #     if not hasattr(self.module, "weight"):
+    #         raise AttributeError("Module has no attribute 'weight'")
+    #
+    #     if self.enabled and self.lora_module is not None:
+    #         assert hasattr(self.lora_module, "weight")
+    #         return self.module.weight + self.lora_module.weight
+    #     else:
+    #         return self.module.weight
+    #
+    # @property
+    # def bias(self) -> Optional[Tensor]:
+    #     if not hasattr(self.module, "bias"):
+    #         return None
+    #
+    #     if (
+    #         self.enabled
+    #         and self.lora_module is not None
+    #         and hasattr(self.lora_module, "bias")
+    #     ):
+    #         return self.module.bias + self.lora_module.bias
+    #     else:
+    #         return self.module.bias
 
 
 def enable_lora(module: Union[Type, LoRA]) -> None:
@@ -193,35 +204,35 @@ def enable_lora(module: Union[Type, LoRA]) -> None:
         module.enabled = True
 
 
-def disable_lora(module: Union[Type, LoRA]) -> None:
-    for child in module.children():
-        disable_lora(child)
-    if isinstance(module, LoRA):
-        module.enabled = False
+# def disable_lora(module: Union[Type, LoRA]) -> None:
+#     for child in module.children():
+#         disable_lora(child)
+#     if isinstance(module, LoRA):
+#         module.enabled = False
+#
+#
+# def merge_lora(module: Union[Type, LoRA], inplace: bool = False) -> Type:
+#     out = module if inplace else deepcopy(module)
+#     for name, child in out.named_children():
+#         out._modules[name] = merge_lora(child, inplace=inplace)
+#
+#     if isinstance(out, LoRA):
+#         if out.lora_module is None:
+#             return out.module
+#         else:
+#             return out.lora_module.merge(out.module, inplace=inplace)
+#     else:
+#         return out
+#
 
-
-def merge_lora(module: Union[Type, LoRA], inplace: bool = False) -> Type:
-    out = module if inplace else deepcopy(module)
-    for name, child in out.named_children():
-        out._modules[name] = merge_lora(child, inplace=inplace)
-
-    if isinstance(out, LoRA):
-        if out.lora_module is None:
-            return out.module
-        else:
-            return out.lora_module.merge(out.module, inplace=inplace)
-    else:
-        return out
-
-
-def remove_lora(module: Union[Type, LoRA], inplace: bool = False) -> Type:
-    """Remove all LoRA modules from the model."""
-    out = module if inplace else deepcopy(module)
-
-    for name, child in out.named_children():
-        out._modules[name] = remove_lora(child, inplace=inplace)
-
-    if isinstance(out, LoRA):
-        return out.module
-    else:
-        return out
+# def remove_lora(module: Union[Type, LoRA], inplace: bool = False) -> Type:
+#     """Remove all LoRA modules from the model."""
+#     out = module if inplace else deepcopy(module)
+#
+#     for name, child in out.named_children():
+#         out._modules[name] = remove_lora(child, inplace=inplace)
+#
+#     if isinstance(out, LoRA):
+#         return out.module
+#     else:
+#         return out

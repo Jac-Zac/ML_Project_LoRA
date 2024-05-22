@@ -22,12 +22,22 @@ class LinearLoRAModule(BaseLoRAModule):
         self.out_features = out_features
         self.rank = rank
 
-        # Define Linear projections for LoRA layers
-        self.in_proj = nn.Linear(in_features=in_features, out_features=rank, bias=False)
-
-        self.out_proj = nn.Linear(
-            in_features=rank, out_features=out_features, bias=False
+        self.in_proj = Tensor.zeros(in_features, rank, requires_grad=True)
+        self.out_proj = Tensor.randn(rank, out_features, requires_grad=True) * (
+            alpha / rank
         )
+
+        # Testing only
+        # self.in_proj = Tensor.randn(in_features, rank, requires_grad=True)
+        # self.out_proj = Tensor.randn(rank, out_features, requires_grad=True) * (
+        #     alpha / rank
+        # )
+        # # Define Linear projections for LoRA layers
+        # self.in_proj = nn.Linear(in_features=in_features, out_features=rank, bias=False)
+        #
+        # self.out_proj = nn.Linear(
+        #     in_features=rank, out_features=out_features, bias=False
+        # )
 
         # Set the droput probability
         self.dropout_prob = dropout
@@ -55,9 +65,15 @@ class LinearLoRAModule(BaseLoRAModule):
         # Multiply by output projection layer
         return x @ self.out_proj
 
-    def merge(self, module, inplace=False):
+    def merge(self, module: nn.Linear, inplace: bool = False) -> nn.Linear:
+        # einstein notation:
+        # - i: input features
+        # - o: output features
+        # - r: rank
         with Tensor.no_grad():
-            lora_weight = self.in_proj.matmul(self.out_proj).transpose()
+            lora_weight = self.out_proj @ self.in_proj.transpose(0, 1)
+
+            # lora_weight = Tensor.einsum("i r, r o -> o i", self.in_proj, self.out_proj)
 
             if inplace:
                 module.weight.data += lora_weight
@@ -67,16 +83,15 @@ class LinearLoRAModule(BaseLoRAModule):
                 in_features=module.in_features,
                 out_features=module.out_features,
                 bias=module.bias is not None,
-                device=module.weight.device,
-                dtype=module.weight.dtype,
             )
             out.weight.data = module.weight.data + lora_weight
             out.bias = module.bias
             return out
 
     @property
-    def weight(self):
-        return self.in_proj.matmul(self.out_proj).transpose()
+    def weight(self) -> Tensor:
+        return self.out_proj @ self.in_proj.transpose(0, 1)
+        return torch.einsum("i r, r o -> o i", self.in_proj, self.out_proj)
 
     """ 
     def merge(self, module: nn.Linear, inplace: bool = False) -> nn.Linear:
