@@ -39,15 +39,15 @@ if __name__ == "__main__":
     lora_model = LoRA.from_module(model, rank=5, inplace=False)
 
     print(f"\nPrinting lora_model: {nn.state.get_state_dict(lora_model)}\n")
-    print(lora_model)
 
     y = lora_model(x)
-    print(lora_model(x).numpy())
+    print(y.numpy())
     print(y.requires_grad)
 
-    # lora_model.disable_lora()
-    # print(lora_model(x).numpy())
-    # print(y.requires_grad)
+    lora_model.disable_lora()
+    y = lora_model(x)
+    print(y.numpy())
+    print(y.requires_grad)
 
     # # # Re-enable
     # lora_model.enable_lora()

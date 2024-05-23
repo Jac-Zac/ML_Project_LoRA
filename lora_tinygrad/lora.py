@@ -11,10 +11,13 @@ from .modules.base import BaseLoRAModule
 from .modules.linear import LinearLoRAModule
 
 
-def get_state_layers_names(model):
-    # Get everything before .weight
-    # return [name.split(".weight")[0] for name in nn.state.get_state_dict(model)]
-    return [name.split(".")[0] for name in nn.state.get_state_dict(model)]
+def get_weights_layers_names(model):
+    # Get everything before the first `.weight` if weight appears in the name of the layer
+    return [
+        name.split(".weight")[0]
+        for name in nn.state.get_state_dict(model)
+        if "weight" in name
+    ]
 
 
 # from lora_tinygrad.modules.attention import MultiheadAttentionLoRAModule
@@ -51,9 +54,14 @@ class LoRA:
         # Enable the gradient again
         Tensor.no_grad = False
 
+        for name in nn.state.get_state_dict(self):
+            print(name)
+            print(self)
+            print(self.enabled)
+
         # IF lora is enable also add the lora
         if self.enabled and self.lora_module is not None:
-            print("Lora is enabled")
+            # print("Lora is enabled")
             y = y + self.lora_module(x)
 
         return y
@@ -144,7 +152,7 @@ class LoRA:
         target_module = module if inplace else copy.deepcopy(module)
 
         # Get all of the layers
-        for name in get_state_layers_names(target_module):
+        for name in get_weights_layers_names(target_module):
             # Single layer
             sub_layer = getattr(target_module, name)
 
@@ -185,28 +193,31 @@ class LoRA:
     #         return self.module.bias
 
 
-# Enable the LoRA parameters
 def enable_lora(module: Union[Type, LoRA]) -> None:
-    for name in get_state_layers_names(module):
-        sub_module = getattr(module, name)
+    # Enable only the Lora layers through all the layers
+    for _ in get_weights_layers_names(module):
+        if isinstance(module, LoRA):
+            module.enabled = True
 
-        if isinstance(sub_module, LoRA):
-            sub_module.enabled = True
 
-
-# Disable the LoRA parameters
 def disable_lora(module: Union[Type, LoRA]) -> None:
-    # For all the layers
-    for name in get_state_layers_names(module):
-        sub_module = getattr(module, name)
+    # Disable only the Lora layers through all the layers
+    for name in nn.state.get_state_dict(module):
+        #     name = ".".join(name.split(".")[1:])
+        if isinstance(module, LoRA):
+            #         print("Disabeliung stuff")
+            #         print(getattr(module, name + ".enabled"))
+            #         setattr(module, name + "enabled", False)
+            # eval(name).enable = False
+            module.enabled = False
 
-        if isinstance(sub_module, LoRA):
-            sub_module.enabled = False
+    setattr(module, "l1.lora_module.enable", False)
+    setattr(module, "l2.lora_module.enable", False)
 
-        # for child in module.children():
-        #     disable_lora(child)
-        # if isinstance(module, LoRA):
-        #     module.enabled = False
+    # for child in module.children():
+    #     disable_lora(child)
+    # if isinstance(module, LoRA):
+    #     module.enabled = False
 
 
 # def merge_lora(module: Union[Type, LoRA], inplace: bool = False) -> Type:
@@ -241,11 +252,9 @@ def disable_lora(module: Union[Type, LoRA]) -> None:
 
 def remove_lora(module: Union[Type, LoRA], inplace: bool = False) -> Type:
     """Remove all LoRA modules from the model."""
-    out = module if inplace else deepcopy(module)
+    out = module if inplace else copy.deepcopy(module)
 
-    layer_names = get_state_layers_names(out)
-
-    for name in layer_names:
+    for name in get_weights_layers_names(out):
         sub_module = getattr(out, name, None)
         if sub_module is not None and isinstance(sub_module, LoRA):
             setattr(out, name, sub_module.module)
