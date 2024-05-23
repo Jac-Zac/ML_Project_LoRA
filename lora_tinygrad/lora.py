@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from copy import deepcopy
 from itertools import chain
-from typing import Generic, Iterable, Literal, Optional, Tuple, Type, Union, overload
+from typing import (Generic, Iterable, Literal, Optional, Tuple, Type, Union,
+                    overload)
 
 from tinygrad import Tensor, nn
 
@@ -12,8 +13,8 @@ from .modules.linear import LinearLoRAModule
 
 def get_state_layers_names(model):
     # Get everything before .weight
-    return [name.split(".weight")[0] for name in nn.state.get_state_dict(model)]
-    # return [name for name in nn.state.get_state_dict(model)]
+    # return [name.split(".weight")[0] for name in nn.state.get_state_dict(model)]
+    return [name.split(".")[0] for name in nn.state.get_state_dict(model)]
 
 
 # from lora_tinygrad.modules.attention import MultiheadAttentionLoRAModule
@@ -52,6 +53,7 @@ class LoRA:
 
         # IF lora is enable also add the lora
         if self.enabled and self.lora_module is not None:
+            print("Lora is enabled")
             y = y + self.lora_module(x)
 
         return y
@@ -69,6 +71,9 @@ class LoRA:
     #         return parameters
     #
     #     return _get_lora_parameters(self)
+
+    # Possibly get lora
+    # get_state_layers_names similar but search where in name = 'lora_module'
 
     def enable_lora(self) -> None:
         return enable_lora(self)  # type: ignore
@@ -128,54 +133,44 @@ class LoRA:
 
     # Abstract implemenataion of from module
     # _______________________________________
-    @overload
-    @classmethod
-    def from_module(
-        cls,
-        module,
-        rank: int,
-        enabled: bool = True,
-        is_root: Literal[True] = True,
-    ) -> LoRA: ...
-
-    @overload
-    @classmethod
-    def from_module(
-        cls,
-        module,
-        rank: int,
-        enabled: bool = True,
-        is_root: Literal[False] = False,
-    ) -> Union[LoRA, Type]: ...
+    # @overload
+    # @classmethod
+    # def from_module(
+    #     cls,
+    #     module,
+    #     rank: int,
+    #     enabled: bool = True,
+    #     is_root: Literal[True] = True,
+    # ) -> LoRA: ...
+    #
+    # @overload
+    # @classmethod
+    # def from_module(
+    #     cls,
+    #     module,
+    #     rank: int,
+    #     enabled: bool = True,
+    #     is_root: Literal[False] = False,
+    # ) -> Union[LoRA, Type]: ...
 
     # Actual implementation of from module
     @classmethod
-    def from_module(cls, module, rank: int, enabled: bool = True, is_root: bool = True):
-        if isinstance(module, nn.Linear):
-            return LoRA._from_linear(module, rank)  # type: ignore
-        # elif isinstance(module, nn.Embedding):
-        #     return LoRA._from_embedding(module, rank)
-        # elif isinstance(module, nn.MultiheadAttention):
-        #     return LoRA._from_multihead_attention(module, rank)  # type: ignore
-
+    def from_module(cls, module, rank: int, inplace=True):
+        # Get all of the layers
         for name in get_state_layers_names(module):
+            # Single layer
+            sub_module = getattr(module, name)
 
-            # Recursively create the LoRA layers modifying the original layers until you get to known layers
+            # when you encounter a known layer that can be made into a LoRA layer do it
+            if isinstance(sub_module, nn.Linear):
+                setattr(module, name, LoRA._from_linear(sub_module, rank))  # type: ignore
+            # elif isinstance(module, nn.Embedding):
+            #     return LoRA._from_embedding(module, rank)
+            # elif isinstance(module, nn.MultiheadAttention):
+            #     return LoRA._from_multihead_attention(module, rank)  # type: ignore
 
-            # Beautiful code to review
-            setattr(
-                module,
-                name,
-                cls.from_module(
-                    getattr(module, name), rank, enabled=enabled, is_root=False
-                ),
-            )
-
-        # Original model is root
-        if is_root:
-            return LoRA(module, None, enabled=enabled)
-        else:
-            return module
+        # Return the new modified module
+        return module
 
     # @property
     # def weight(self) -> Tensor:
@@ -203,39 +198,30 @@ class LoRA:
     #         return self.module.bias
 
 
+# Enable the LoRA parameters
 def enable_lora(module: Union[Type, LoRA]) -> None:
     for name in get_state_layers_names(module):
-        enable_lora(getattr(module, name))
-    if isinstance(module, LoRA):
-        module.enabled = True
+        sub_module = getattr(module, name)
 
-    # for child in module.children():
-    #     enable_lora(child)
-    # if isinstance(module, LoRA):
-    #     module.enabled = True
+        if isinstance(sub_module, LoRA):
+            sub_module.enabled = False
 
 
+# Disable the LoRA parameters
 def disable_lora(module: Union[Type, LoRA]) -> None:
-
-    print(f"{type(module)}")
-
+    # For all the layers
     for name in get_state_layers_names(module):
-        print(name)
-        # print("Disabeling lora maybe ?")
-        # disable_lora(getattr(module, name))
+        sub_module = getattr(module, name)
 
-    # print("Disabeling lora")
-    if isinstance(module, LoRA):
-        # print("Disabeling lora")
-        module.enabled = False
+        if isinstance(sub_module, LoRA):
+            sub_module.enabled = False
 
-    # for child in module.children():
-    #     disable_lora(child)
-    # if isinstance(module, LoRA):
-    #     module.enabled = False
+        # for child in module.children():
+        #     disable_lora(child)
+        # if isinstance(module, LoRA):
+        #     module.enabled = False
 
 
-#
 # def merge_lora(module: Union[Type, LoRA], inplace: bool = False) -> Type:
 #     out = module if inplace else deepcopy(module)
 #     for name, child in out.named_children():
@@ -251,17 +237,32 @@ def disable_lora(module: Union[Type, LoRA]) -> None:
 #
 
 
+# def remove_lora(module: Union[Type, LoRA], inplace: bool = False) -> Type:
+#     """Remove all LoRA modules from the model."""
+#     out = module if inplace else deepcopy(module)
+#
+#     # print(out)
+#     for name in get_state_layers_names(out):
+#         setattr(out, name, remove_lora(getattr(out, name), inplace=inplace))
+#         # out._modules[name] = remove_lora(child, inplace=inplace)
+#
+#     if isinstance(out, LoRA):
+#         return out.module
+#     else:
+#         return out
+
+
 def remove_lora(module: Union[Type, LoRA], inplace: bool = False) -> Type:
     """Remove all LoRA modules from the model."""
     out = module if inplace else deepcopy(module)
 
-    # print(out)
-    for name in get_state_layers_names(out):
-        print(name)
-        # setattr(out, name, remove_lora(getattr(out, name), inplace=inplace))
-        # out._modules[name] = remove_lora(child, inplace=inplace)
+    layer_names = get_state_layers_names(out)
 
-    if isinstance(out, LoRA):
-        return out.module
-    else:
-        return out
+    for name in layer_names:
+        sub_module = getattr(out, name, None)
+        if sub_module is not None and isinstance(sub_module, LoRA):
+            setattr(out, name, sub_module.module)
+        else:
+            setattr(out, name, sub_module)
+
+    return out

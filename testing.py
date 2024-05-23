@@ -33,22 +33,25 @@ if __name__ == "__main__":
     x = Tensor.randn(1, 28, 28).reshape(-1)
 
     model = TinyNet()
-    lora_model = LoRA.from_module(model, rank=5)
     print(model(x).numpy())
 
-    y = lora_model(x)
-    print(y.requires_grad)
-    #
-    # lora_model.disable_lora()
-    # y = lora_model(x)
-    # print(y.requires_grad)
+    print(f"\nPrinting model: {nn.state.get_state_dict(model)}\n")
+    lora_model = LoRA.from_module(model, rank=5)
 
-    # # Re-enable
+    print(f"\nPrinting lora_model: {nn.state.get_state_dict(model)}\n")
+
+    y = lora_model(x)
+    print(lora_model(x).numpy())
+    #
+    lora_model.disable_lora()
+    print(lora_model(x).numpy())
+    # print(y.requires_grad)
+    #
+    # # # Re-enable
     # lora_model.enable_lora()
     # y = lora_model(x)
     # print(y.requires_grad)
 
-    print(f"\nPrinting model: {nn.state.get_state_dict(model)}\n")
     #
     # for lr, epochs in zip(lrs, epochss):
     #     # optimizer = nn.optim.Adam(nn.state.get_parameters(model), lr=lr)
@@ -71,15 +74,20 @@ if __name__ == "__main__":
     #
     #     print(accuracy)
     #
-    # opt = nn.optim.SGD(nn.state.get_parameters(model), lr=3e-4)
-    #
     # # Get predictions for the lora model
     # print(lora_model(x).numpy())
-    # # Remove LoRA weights
+    # Remove LoRA weights
     # original_model = lora_model.remove_lora(inplace=False)  # default: inplace=False
+    # lora_model.remove_lora(inplace=True)  # default: inplace=False
     #
-    # # Get predictions for the original model
+    # print(lora_model(x).numpy())
+    #
+    # print(nn.state.get_state_dict(lora_model))
+    #
+    # # # Get predictions for the original model
     # print(original_model(x).numpy())
+    #
+    # print(nn.state.get_state_dict(original_model))
 
 # with Tensor.train():
 #     for step in range(1000):

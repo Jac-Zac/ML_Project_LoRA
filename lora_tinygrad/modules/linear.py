@@ -26,14 +26,14 @@ class LinearLoRAModule(BaseLoRAModule):
         # NOTE: The original LoRA paper recommends multiplying the output of 'in_proj'
         # by (alpha / rank).  This adds more computation to the forward pass, and it's
         # mathematically equivalent to scaling 'in_proj' by (alpha / rank) ahead of
-        self.in_proj = Tensor.kaiming_uniform(in_features, rank, requires_grad=True) * (
-            alpha / rank
-        )
-        self.out_proj = Tensor.zeros(rank, out_features, requires_grad=True)
+        # self.in_proj = Tensor.kaiming_uniform(in_features, rank, requires_grad=True) * (
+        #     alpha / rank
+        # )
+        # self.out_proj = Tensor.zeros(rank, out_features, requires_grad=True)
 
         # Testing only
-        # self.in_proj = Tensor.randn(in_features, rank, requires_grad=True)
-        # self.out_proj = Tensor.randn(rank, out_features, requires_grad=True)
+        self.in_proj = Tensor.randn(in_features, rank, requires_grad=True)
+        self.out_proj = Tensor.randn(rank, out_features, requires_grad=True)
 
         # Set the droput probability
         self.dropout_prob = dropout
