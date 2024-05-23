@@ -36,23 +36,24 @@ if __name__ == "__main__":
     print(model(x).numpy())
 
     print(f"\nPrinting model: {nn.state.get_state_dict(model)}\n")
-    lora_model = LoRA.from_module(model, rank=5)
+    lora_model = LoRA.from_module(model, rank=5, inplace=False)
 
-    print(f"\nPrinting lora_model: {nn.state.get_state_dict(model)}\n")
+    print(f"\nPrinting lora_model: {nn.state.get_state_dict(lora_model)}\n")
+    print(lora_model)
 
     y = lora_model(x)
     print(lora_model(x).numpy())
-    #
-    lora_model.disable_lora()
-    print(lora_model(x).numpy())
+    print(y.requires_grad)
+
+    # lora_model.disable_lora()
+    # print(lora_model(x).numpy())
     # print(y.requires_grad)
-    #
+
     # # # Re-enable
     # lora_model.enable_lora()
     # y = lora_model(x)
     # print(y.requires_grad)
 
-    #
     # for lr, epochs in zip(lrs, epochss):
     #     # optimizer = nn.optim.Adam(nn.state.get_parameters(model), lr=lr)
     #     optimizer = nn.optim.Adam(

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from copy import deepcopy
-from itertools import chain
+import copy
+# from itertools import chain
 from typing import (Generic, Iterable, Literal, Optional, Tuple, Type, Union,
                     overload)
 
@@ -38,10 +38,10 @@ class LoRA:
         self.lora_module = lora_module
         self.enabled = enabled and lora_module is not None
 
-        # if not enabled:
-        #     self.disable_lora()
-        # else:
-        #     self.enable_lora()
+        if not enabled:
+            self.disable_lora()
+        else:
+            self.enable_lora()
 
     def __call__(self, x: Tensor, *args, **kwargs) -> Tensor:
 
@@ -131,46 +131,33 @@ class LoRA:
     #     )
     #     return MultiheadAttentionLoRA(module, lora_module)
 
-    # Abstract implemenataion of from module
-    # _______________________________________
-    # @overload
-    # @classmethod
-    # def from_module(
-    #     cls,
-    #     module,
-    #     rank: int,
-    #     enabled: bool = True,
-    #     is_root: Literal[True] = True,
-    # ) -> LoRA: ...
-    #
-    # @overload
-    # @classmethod
-    # def from_module(
-    #     cls,
-    #     module,
-    #     rank: int,
-    #     enabled: bool = True,
-    #     is_root: Literal[False] = False,
-    # ) -> Union[LoRA, Type]: ...
-
     # Actual implementation of from module
     @classmethod
-    def from_module(cls, module, rank: int, inplace=True):
+    def from_module(
+        cls,
+        module,
+        rank: int,
+        inplace: bool = True,
+        enabled: bool = True,
+    ):
+        # If not inplace, create a deepcopy of the module to avoid modifying the original
+        target_module = module if inplace else copy.deepcopy(module)
+
         # Get all of the layers
-        for name in get_state_layers_names(module):
+        for name in get_state_layers_names(target_module):
             # Single layer
-            sub_module = getattr(module, name)
+            sub_layer = getattr(target_module, name)
 
             # when you encounter a known layer that can be made into a LoRA layer do it
-            if isinstance(sub_module, nn.Linear):
-                setattr(module, name, LoRA._from_linear(sub_module, rank))  # type: ignore
-            # elif isinstance(module, nn.Embedding):
-            #     return LoRA._from_embedding(module, rank)
-            # elif isinstance(module, nn.MultiheadAttention):
-            #     return LoRA._from_multihead_attention(module, rank)  # type: ignore
+            if isinstance(sub_layer, nn.Linear):
+                setattr(target_module, name, LoRA._from_linear(sub_layer, rank))  # type: ignore
+            # elif isinstance(sub_layer, nn.Embedding):
+            #     setattr(target_module, name, LoRA._from_embedding(sub_layer, rank))
+            # elif isinstance(sub_layer, nn.MultiheadAttention):
+            #     setattr(target_module, name, LoRA._from_multihead_attention(sub_layer, rank))  # type: ignore
 
-        # Return the new modified module
-        return module
+        # Return the new (or modified) module
+        return LoRA(target_module, None, enabled=enabled)
 
     # @property
     # def weight(self) -> Tensor:
@@ -204,7 +191,7 @@ def enable_lora(module: Union[Type, LoRA]) -> None:
         sub_module = getattr(module, name)
 
         if isinstance(sub_module, LoRA):
-            sub_module.enabled = False
+            sub_module.enabled = True
 
 
 # Disable the LoRA parameters
