@@ -200,19 +200,34 @@ def enable_lora(module: Union[Type, LoRA]) -> None:
             module.enabled = True
 
 
+# def disable_lora(module: Union[Type, LoRA]) -> None:
+#     # Disable only the Lora layers through all the layers
+#     # for name in get_weights_layers_names(module):
+#     for name in get_weights_layers_names(module):
+#         sub_module = module
+#         # Get the correct attribute
+#         for attr in name.split(".")[:-1]:
+#             sub_module = getattr(sub_module, attr)
+#
+#         if isinstance(sub_module, LoRA):
+#             sub_module.enabled = False
+
+
 def disable_lora(module: Union[Type, LoRA]) -> None:
     # Disable only the Lora layers through all the layers
-    for name in nn.state.get_state_dict(module):
-        print(f" I have it: {module.module.l1.enabled}")
-        if hasattr(module, name):
-            sub_module = getattr(module, name)
-            print(f"Has attribute: {sub_module}")
+    # for name in get_weights_layers_names(module):
+    sub_module = module
+
+    for name in nn.state.get_state_dict(sub_module):
+        name = name.split(".")[0]
+        if hasattr(sub_module, name):
             if isinstance(sub_module, LoRA):
-                print("disabeling lora")
                 sub_module.enabled = False
 
-    module.module.l1.enabled = False
-    module.module.l2.enabled = False
+            sub_module = disable_lora(getattr(sub_module, name))
+
+    # module.module.l1.enabled = False
+    # module.module.l2.enabled = False
     # for child in module.children():
     #     disable_lora(child)
     # if isinstance(module, LoRA):
