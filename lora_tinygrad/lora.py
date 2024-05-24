@@ -62,17 +62,22 @@ class LoRA:
 
     # I have to only return the lora parameters
 
-    # def parameters(self) -> Iterable[nn.Parameter]:  # type: ignore[override]
-    #     def _get_lora_parameters(module: nn.Module):
-    #         parameters = chain(
-    #             *[_get_lora_parameters(child) for child in module.children()]
-    #         )
-    #         if isinstance(module, LoRA) and module.lora_module is not None:
-    #             parameters = chain(parameters, module.lora_module.parameters())
-    #
-    #         return parameters
-    #
-    #     return _get_lora_parameters(self)
+    def parameters(self) -> Iterable[nn.Parameter]:  # type: ignore[override]
+        def _get_lora_parameters(module: nn.Module):
+            parameters = []
+            for name in nn.state.get_state_dict(module):
+                sub_module = module
+                # Get the correct attribute
+                for attr in name.split("."):
+                    sub_module = getattr(sub_module, attr)
+
+                # if isinstance(sub_module, LoRA) and module.lora_module is not None:
+                #     parameters = chain(parameters, module.lora_module.parameters())
+                parameters.append(sub_module)
+
+            return parameters
+
+        return _get_lora_parameters(self)
 
     # Possibly get lora
     # get_state_layers_names similar but search where in name = 'lora_module'

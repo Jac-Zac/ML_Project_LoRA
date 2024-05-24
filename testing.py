@@ -37,12 +37,16 @@ if __name__ == "__main__":
 
     lora_model = LoRA.from_module(model, rank=5, inplace=False)
 
-    print(f"\nPrinting model: {nn.state.get_state_dict(model)}\n")
-    print(f"\nPrinting lora_model: {nn.state.get_state_dict(lora_model)}\n")
+    # print(f"\nPrinting model: {nn.state.get_state_dict(model)}\n")
+    # print(f"\nPrinting lora_model: {nn.state.get_state_dict(lora_model)}\n")
 
     y = lora_model(x)
     print(y.numpy())
     print(y.requires_grad)
+
+    print(f"\nPrinting model: {nn.state.get_parameters(model)}\n")
+    # print(f"\nPrinting lora_model: {nn.state.get_parameters(lora_model)}\n")
+    print(f"\nPrinting lora_model: {lora_model.parameters()}\n")
 
     # lora_model.disable_lora()
     # y = lora_model(x)
@@ -54,45 +58,30 @@ if __name__ == "__main__":
     # y = lora_model(x)
     # print(y.requires_grad)
 
-    for lr, epochs in zip(lrs, epochss):
-        # optimizer = nn.optim.Adam(nn.state.get_parameters(model), lr=lr)
-        optimizer = nn.optim.Adam(
-            [
-                lora_model.module.l1.lora_module.in_proj,
-                lora_model.module.l1.lora_module.out_proj,
-                lora_model.module.l2.lora_module.in_proj,
-                lora_model.module.l2.lora_module.out_proj,
-            ],
-            lr=lr,
-        )
-        for epoch in range(1, epochs + 1):
-            train(
-                lora_model,
-                X_train,
-                Y_train,
-                optimizer,
-                steps=steps,
-                lossfn=lossfn,
-                BS=BS,
-            )
-
-        print("After pre-training our model..")
-        accuracy, Y_test_pred = evaluate(
-            model, X_test, Y_test, BS=BS, return_predict=True
-        )
-
-        print(accuracy)
-
-    # Get predictions for the lora model
-    print(lora_model(x).numpy())
-    # Remove LoRA weights
-    # original_model = lora_model.remove_lora(inplace=False)  # default: inplace=False
-    # lora_model.remove_lora(inplace=True)  # default: inplace=False
-
-    # Disable lora
-    lora_model.disable_lora()
-    print(lora_model(x).numpy())
-
+    # for lr, epochs in zip(lrs, epochss):
+    #     # optimizer = nn.optim.Adam(nn.state.get_parameters(model), lr=lr)
+    #     optimizer = nn.optim.Adam(nn.state.get_parameters(lora_model), lr=lr)
+    #     for epoch in range(1, epochs + 1):
+    #         train(model, X_train, Y_train, optimizer, steps=steps, lossfn=lossfn, BS=BS)
+    #
+    #     print("After pre-training our model..")
+    #     accuracy, Y_test_pred = evaluate(
+    #         model, X_test, Y_test, BS=BS, return_predict=True
+    #     )
+    #
+    #     print(accuracy)
+    #
+    # # Get predictions for the lora model
+    # print(lora_model(x).numpy())
+    # # Remove LoRA weights
+    # # original_model = lora_model.remove_lora(inplace=False)  # default: inplace=False
+    # # lora_model.remove_lora(inplace=True)  # default: inplace=False
+    #
+    # lora_model.disable_lora()
+    # print(lora_model(x).numpy())
+    #
+    # print(nn.state.get_state_dict(lora_model))
+    #
     # # Get predictions for the original model
     # print(original_model(x).numpy())
     # #
