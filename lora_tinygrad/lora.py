@@ -203,17 +203,16 @@ def enable_lora(module: Union[Type, LoRA]) -> None:
 def disable_lora(module: Union[Type, LoRA]) -> None:
     # Disable only the Lora layers through all the layers
     for name in nn.state.get_state_dict(module):
-        #     name = ".".join(name.split(".")[1:])
-        if isinstance(module, LoRA):
-            #         print("Disabeliung stuff")
-            #         print(getattr(module, name + ".enabled"))
-            #         setattr(module, name + "enabled", False)
-            # eval(name).enable = False
-            module.enabled = False
+        print(f" I have it: {module.module.l1.enabled}")
+        if hasattr(module, name):
+            sub_module = getattr(module, name)
+            print(f"Has attribute: {sub_module}")
+            if isinstance(sub_module, LoRA):
+                print("disabeling lora")
+                sub_module.enabled = False
 
-    setattr(module, "l1.lora_module.enable", False)
-    setattr(module, "l2.lora_module.enable", False)
-
+    module.module.l1.enabled = False
+    module.module.l2.enabled = False
     # for child in module.children():
     #     disable_lora(child)
     # if isinstance(module, LoRA):
