@@ -40,37 +40,28 @@ if __name__ == "__main__":
     print(f"\nPrinting model: {nn.state.get_state_dict(model)}\n")
     print(f"\nPrinting lora_model: {nn.state.get_state_dict(lora_model)}\n")
 
-    # y = lora_model(x)
-    # print(y.numpy())
-    # print(y.requires_grad)
+    y = lora_model(x)
+    print(y.numpy())
+    print(y.requires_grad)
 
     # print(f"\nPrinting model: {nn.state.get_parameters(model)}\n")
     # print(f"\nPrinting lora_model: {nn.state.get_parameters(lora_model)}\n")
     # print(f"\nPrinting lora_model: {lora_model.parameters()}\n")
 
-    # lora_model.disable_lora()
-    # y = lora_model(x)
-    # print(y.numpy())
-    # print(y.requires_grad)
+    lora_model.disable_lora()
+    y = lora_model(x)
+    print(y.numpy())
+    print(y.requires_grad)
 
-    # # # Re-enable
-    # lora_model.enable_lora()
-    # y = lora_model(x)
-    # print(y.requires_grad)
-    # print(f"Print Lora parameters: {lora_model.parameters()}\n")
-    # print(nn.state.get_parameters(lora_model))
+    # # Re-enable
+    lora_model.enable_lora()
+    y = lora_model(x)
+    print(y.requires_grad)
+    print(f"Print Lora parameters: {lora_model.parameters()}\n")
+    print(nn.state.get_parameters(lora_model))
 
     for lr, epochs in zip(lrs, epochss):
-        # optimizer = nn.optim.Adam(nn.state.get_parameters(model), lr=lr)
-        optimizer = nn.optim.Adam(
-            [
-                lora_model.module.l1.lora_module.in_proj,
-                lora_model.module.l1.lora_module.out_proj,
-                lora_model.module.l2.lora_module.in_proj,
-                lora_model.module.l2.lora_module.out_proj,
-            ],
-            lr=lr,
-        )
+        optimizer = nn.optim.Adam(lora_model.parameters(), lr=lr)
         for epoch in range(1, epochs + 1):
             train(
                 lora_model,
