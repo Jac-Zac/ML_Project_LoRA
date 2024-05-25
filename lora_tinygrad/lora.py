@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import copy
-
 # from itertools import chain
-from typing import Generic, Iterable, Literal, Optional, Tuple, Type, Union, overload
+from typing import (Generic, Iterable, Literal, Optional, Tuple, Type, Union,
+                    overload)
 
 from tinygrad import Tensor, nn
 
@@ -61,19 +61,20 @@ class LoRA:
         return y
 
     # I have to only return the lora parameters
-
+    # NOTE: TMP SOLUTION
     def parameters(self) -> Iterable[nn.Parameter]:  # type: ignore[override]
         def _get_lora_parameters(module: nn.Module):
             parameters = []
             for name in nn.state.get_state_dict(module):
                 sub_module = module
-                # Get the correct attribute
+                # # Get the correct attribute
                 for attr in name.split("."):
                     sub_module = getattr(sub_module, attr)
-
-                # if isinstance(sub_module, LoRA) and module.lora_module is not None:
-                #     parameters = chain(parameters, module.lora_module.parameters())
-                parameters.append(sub_module)
+                # if isinstance(sub_module, LoRA) and sub_module.lora_module is not None:
+                # if isinstance(sub_module, LoRA) and "lora_module" in name:
+                if "lora_module" in name:
+                    #     parameters = chain(parameters, module.lora_module.parameters())
+                    parameters.append(sub_module)
 
             return parameters
 
