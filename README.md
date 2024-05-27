@@ -6,6 +6,10 @@ View the computation graph:
 GRAPH=1 ./testing.py
 ```
 
+## Alternative
+
+GaLore, New more efficient way to do it we compute the gradient approximation. You can look at missis coffe bean video. SVD
+
 ### Summary
 
 This is a simple python implementation of a vector store that showcase the ability to use an embedding model to store documents in an high dimensional vector space, and do similarity search to retrieve the most relevant documents. Furthermore it showcase how this can then be used to do RAG with an LLM like mistral without the need of libraries like Langchain or LlamaIndex

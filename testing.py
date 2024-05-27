@@ -29,7 +29,6 @@ if __name__ == "__main__":
     X_train, Y_train, X_test, Y_test = fetch_mnist()
 
     steps = len(X_train) // BS
-    lossfn = lambda out, y: out.sparse_categorical_crossentropy(y)
     x = Tensor.randn(1, 28, 28).reshape(-1)
 
     model = TinyNet()
@@ -69,7 +68,7 @@ if __name__ == "__main__":
                 Y_train,
                 optimizer,
                 steps=steps,
-                lossfn=lossfn,
+                lossfn=Tensor.sparse_categorical_crossentropy,
                 BS=BS,
             )
 
