@@ -1,4 +1,5 @@
 import gzip
+import random
 
 import numpy as np
 from tinygrad import Tensor
@@ -26,28 +27,33 @@ def get_mislabeled_counts(y, y_pred, n_output) -> dict[int, float]:
 
 
 def mix_old_and_new_data(X, Y, worst_class, ratio):
-    import random
+    """Mixes a certain percentage of the original data with the worst performing class data."""
 
-    # Calculate the number of samples for the worst class
-    worst_class_samples = min(
-        int(len(Y) * ratio), len(filter_data_by_class(X, Y, worst_class)[0])
-    )
+    # Calculate the number of samples for the original dataset and worst class
+    num_original_samples = int(len(Y) * ratio)
+    num_worst_class_samples = len(Y) - num_original_samples
 
-    # Filter the old dataset for the old class labels
+    # Randomly sample from the original dataset
+    sampled_indices = random.sample(range(len(Y)), num_original_samples)
+    original_x_sampled = [X[i] for i in sampled_indices]
+    original_y_sampled = [Y[i] for i in sampled_indices]
+
+    # Separate the worst performing class samples
     worst_class_x, worst_class_y = filter_data_by_class(X, Y, worst_class)
 
-    # Randomly sample from the worst class
-    worst_class_x, worst_class_y = random.sample(
-        list(zip(worst_class_x, worst_class_y)), worst_class_samples
-    )
+    # Ensure there are enough samples from the worst class
+    num_worst_class_samples = min(num_worst_class_samples, len(worst_class_y))
 
-    # Combine the worst class samples with the rest of the data
-    mixed_X = X.copy()
-    mixed_Y = Y.copy()
-    for x, y in worst_class_x:
-        if y not in mixed_Y:
-            mixed_Y.append(y)
-        mixed_X.append(x)
+    # Randomly sample from the worst class
+    worst_sampled_indices = random.sample(
+        range(len(worst_class_y)), num_worst_class_samples
+    )
+    worst_class_x_sampled = [worst_class_x[i] for i in worst_sampled_indices]
+    worst_class_y_sampled = [worst_class_y[i] for i in worst_sampled_indices]
+
+    # Combine the original samples with the worst class samples
+    mixed_X = np.concatenate((original_x_sampled, worst_class_x_sampled), axis=0)
+    mixed_Y = np.concatenate((original_y_sampled, worst_class_y_sampled), axis=0)
 
     return mixed_X, mixed_Y
 

@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
 
+import os
+import sys
+
 import numpy as np
 from tinygrad import Tensor, nn
-
-from extra.datasets import fetch_mnist
-from extra.training import evaluate, train
-from lora_tinygrad import LoRA
 from utils import *
+
+# Get the path of the parent directory
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+# Add the parent directory to the system path
+sys.path.append(parent_dir)
+
+# Now you can import the LoRA module
+from lora_tinygrad import LoRA
 
 
 class TinyNet:
@@ -64,10 +72,10 @@ if __name__ == "__main__":
     print(f"Fine-tuning the worst class, {worst_class}..")
     lrs = 1e-7
     epochss = 1
-    BS = 128
+    BS = 64
 
-    # Filter to only train on the worst class
-    X_train, Y_train = filter_data_by_class(X_train, Y_train, worst_class)
+    # Filter to only train on the worst class and make a mixture with the old dataset
+    X_train, Y_train = mix_old_and_new_data(X_train, Y_train, worst_class, ratio=0.6)
     steps = len(X_train) // BS
 
     # Pre-training the model
