@@ -6,6 +6,7 @@ from tinygrad import Tensor, nn
 from extra.datasets import fetch_mnist
 from extra.training import evaluate, train
 from lora_tinygrad import LoRA
+from utils import *
 
 
 class TinyNet:
@@ -20,103 +21,77 @@ class TinyNet:
         return x
 
 
-def filter_data_by_class(X, Y, class_label):
-    class_indices = np.where(Y == class_label)[0]
-
-    filtered_X = X[class_indices]
-    filtered_Y = Y[class_indices]
-
-    return filtered_X, filtered_Y
-
-
-def _get_mislabeled_counts(y, y_pred) -> dict[int, float]:
-    mislabeled_counts_dict: dict[int, float] = {cls: -np.inf for cls in range(10)}
-    for cls in range(10):
-        total_predictions = np.sum(y == cls)
-        incorrect_predictions = np.sum((y == cls) & (y != y_pred))
-        if total_predictions > 0:
-            mislabeled_count = incorrect_predictions
-        else:
-            mislabeled_count = -np.inf
-        mislabeled_counts_dict[cls] = mislabeled_count
-    return mislabeled_counts_dict
-
-
-def _pretty_print_mislabeled_counts(mislabeled_counts: dict[int, float]) -> None:
-    for cls in mislabeled_counts.keys():
-        print(f"Class {cls}: Missing {mislabeled_counts[cls]}")
-
-
 if __name__ == "__main__":
+    # Setting up a random seed
     print("Simulating a pre-trained model, with one epoch..")
-    lrs = [1e-3]
-    epochss = [1]
+    lr = 1e-3
+    epochss = 5
     BS = 128
+    n_outputs = 10
 
     X_train, Y_train, X_test, Y_test = fetch_mnist()
-
     steps = len(X_train) // BS
-    x = Tensor.randn(1, 28, 28).reshape(-1)
 
+    # Define the model
     model = TinyNet()
 
-    for lr, epochs in zip(lrs, epochss):
+    # Define loss function
+    lossfn = Tensor.sparse_categorical_crossentropy
+
+    # Pre-training the model
+    for _ in range(epochss):
         optimizer = nn.optim.Adam(nn.state.get_parameters(model), lr=lr)
-        for epoch in range(1, epochs + 1):
-            train(
-                model,
-                X_train,
-                Y_train,
-                optimizer,
-                steps=steps,
-                lossfn=Tensor.sparse_categorical_crossentropy,
-                BS=BS,
-            )
+        train(model, X_train, Y_train, optimizer, lossfn=lossfn, steps=steps, BS=BS)
+        # accuracy, Y_test_pred = evaluate(model, X_test, Y_test, return_predict=True)
+        lr /= 1.2
+        # print(f"reducing lr to {lr:.7f}")
 
     print("After pre-training our model..")
     accuracy, Y_test_pred = evaluate(model, X_test, Y_test, BS=BS, return_predict=True)
 
-    print(accuracy)
+    print(f"Test set accuracy: {accuracy}")
 
-    mislabeled_counts = _get_mislabeled_counts(Y_test, Y_test_pred)
-    _pretty_print_mislabeled_counts(mislabeled_counts)
+    mislabeled_counts = get_mislabeled_counts(Y_test, Y_test_pred, n_output=n_outputs)
+    pretty_print_mislabeled_counts(mislabeled_counts)
 
     worst_class = max(mislabeled_counts, key=lambda k: mislabeled_counts[k])
     print(f"Worst class: {worst_class}")
 
     print("Lora-izing the model..")
-
     # Getting the Lora model from the original model without modifying the original one
-    lora_model = LoRA.from_module(model, rank=15, inplace=False)
+    lora_model = LoRA.from_module(model, rank=8, inplace=False)
 
     print(f"Fine-tuning the worst class, {worst_class}..")
-    lrs = [1e-5]
-    epochss = [1]
+    lrs = 1e-7
+    epochss = 1
     BS = 128
 
+    # Filter to only train on the worst class
     X_train, Y_train = filter_data_by_class(X_train, Y_train, worst_class)
-    for lr, epochs in zip(lrs, epochss):
+    steps = len(X_train) // BS
+
+    # Pre-training the model
+    for _ in range(epochss):
         optimizer = nn.optim.Adam(lora_model.parameters(), lr=lr)
-        for epoch in range(1, epochs + 1):
-            train(
-                lora_model,
-                X_train,
-                Y_train,
-                optimizer,
-                steps=200,
-                lossfn=Tensor.sparse_categorical_crossentropy,
-                BS=BS,
-            )
+        # Default loss function is sparse_categorical_crossentropy
+        train(lora_model, X_train, Y_train, optimizer, steps=steps, BS=BS)
+        accuracy, Y_test_pred = evaluate(
+            lora_model, X_test, Y_test, return_predict=True
+        )
+        lr /= 1.2
+        # print(f"reducing lr to {lr:.7f}")
 
     print("Here's your fine-tuned model..")
     accuracy, Y_test_pred = evaluate(
         lora_model, X_test, Y_test, BS=BS, return_predict=True
     )
 
+    print(f"Test set accuracy after finetuning: {accuracy}")
+
     # checkpoint_file_path = f"examples/checkpoint{accuracy * 1e6:.0f}"
     # lora_model.save(checkpoint_file_path)
-    mislabeled_counts = _get_mislabeled_counts(Y_test, Y_test_pred)
-    _pretty_print_mislabeled_counts(mislabeled_counts)
+    mislabeled_counts = get_mislabeled_counts(Y_test, Y_test_pred, n_output=n_outputs)
+    pretty_print_mislabeled_counts(mislabeled_counts)
 
     print(lora_model.parameters())
 

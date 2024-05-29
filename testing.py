@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import numpy as np
-from tinygrad import Device, Tensor, nn
+from tinygrad import Tensor, nn
 
 from extra.datasets import fetch_mnist
 from extra.training import evaluate, train
@@ -22,8 +22,8 @@ class TinyNet:
 
 if __name__ == "__main__":
     print("Simulating a pre-trained model, with one epoch..")
-    lrs = [1e-3]
-    epochss = [1]
+    lr = 1e-3
+    epochss = 5
     BS = 128
 
     X_train, Y_train, X_test, Y_test = fetch_mnist()
@@ -59,25 +59,12 @@ if __name__ == "__main__":
     print(f"Print Lora parameters: {lora_model.parameters()}\n")
     print(nn.state.get_parameters(lora_model))
 
-    for lr, epochs in zip(lrs, epochss):
+    for _ in range(epochss):
         optimizer = nn.optim.Adam(lora_model.parameters(), lr=lr)
-        for epoch in range(1, epochs + 1):
-            train(
-                lora_model,
-                X_train,
-                Y_train,
-                optimizer,
-                steps=steps,
-                lossfn=Tensor.sparse_categorical_crossentropy,
-                BS=BS,
-            )
-
-        print("After pre-training our model..")
-        accuracy, Y_test_pred = evaluate(
-            model, X_test, Y_test, BS=BS, return_predict=True
-        )
-
-        print(accuracy)
+        train(lora_model, X_train, Y_train, optimizer, steps=steps, BS=BS)
+        accuracy, Y_test_pred = evaluate(model, X_test, Y_test, return_predict=True)
+        lr /= 1.2
+        print(f"reducing lr to {lr:.7f}")
 
     # Get predictions for the lora model
     print("Lora model predictions:")

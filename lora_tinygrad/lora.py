@@ -36,7 +36,6 @@ class LoRA:
         enabled: bool = True,
     ):
         super().__init__()
-        # self.module = module.eval()
         self.module = module
         self.lora_module = lora_module
         self.enabled = enabled and lora_module is not None
@@ -79,9 +78,6 @@ class LoRA:
             return parameters
 
         return _get_lora_parameters(self)
-
-    # Possibly get lora
-    # get_state_layers_names similar but search where in name = 'lora_module'
 
     def enable_lora(self) -> None:
         return enable_lora(self)  # type: ignore
