@@ -1,9 +1,20 @@
 from __future__ import annotations
 
 import copy
-# from itertools import chain
-from typing import (Generic, Iterable, Literal, Optional, Tuple, Type, Union,
-                    overload)
+from collections import OrderedDict
+from typing import (
+    Any,
+    Dict,
+    Generic,
+    Iterable,
+    List,
+    Literal,
+    Optional,
+    Tuple,
+    Type,
+    Union,
+    overload,
+)
 
 from tinygrad import Tensor, nn
 
@@ -18,6 +29,33 @@ def get_weights_layers_names(model):
         for name in nn.state.get_state_dict(model)
         if "weight" in name
     ]
+
+
+def get_layers_dict(obj, layer_name=""):
+    layers = {}
+
+    # layers[layer_name] = obj  # Store the current object with its layer name as key
+    layers[layer_name.lstrip(".")] = (
+        obj  # Store the current object with its layer name as key without the leading "."
+    )
+
+    if hasattr(obj, "_asdict"):
+        for key, value in obj._asdict().items():
+            layers.update(get_layers_dict(value, f"{layer_name}.{key}"))
+    elif isinstance(obj, OrderedDict):
+        for key, value in obj.items():
+            layers.update(get_layers_dict(value, f"{layer_name}.{key}"))
+    elif hasattr(obj, "__dict__"):
+        for key, value in obj.__dict__.items():
+            layers.update(get_layers_dict(value, f"{layer_name}.{key}"))
+    elif isinstance(obj, (list, tuple)):
+        for i, x in enumerate(obj):
+            layers.update(get_layers_dict(x, f"{layer_name}.{i}"))
+    elif isinstance(obj, dict):
+        for k, v in obj.items():
+            layers.update(get_layers_dict(v, f"{layer_name}.{k}"))
+
+    return layers
 
 
 # from lora_tinygrad.modules.attention import MultiheadAttentionLoRAModule
@@ -40,10 +78,10 @@ class LoRA:
         self.lora_module = lora_module
         self.enabled = enabled and lora_module is not None
 
-        if not enabled:
-            self.disable_lora()
-        else:
-            self.enable_lora()
+        # if not enabled:
+        #     self.disable_lora()
+        # else:
+        #     self.enable_lora()
 
     def __call__(self, x: Tensor, *args, **kwargs) -> Tensor:
 
@@ -60,24 +98,16 @@ class LoRA:
         return y
 
     # I have to only return the lora parameters
-    # NOTE: TMP SOLUTION
-    def parameters(self) -> Iterable[nn.Parameter]:  # type: ignore[override]
-        def _get_lora_parameters(module: nn.Module):
-            parameters = []
-            for name in nn.state.get_state_dict(module):
-                sub_module = module
-                # # Get the correct attribute
-                for attr in name.split("."):
-                    sub_module = getattr(sub_module, attr)
-                # if isinstance(sub_module, LoRA) and sub_module.lora_module is not None:
-                # if isinstance(sub_module, LoRA) and "lora_module" in name:
-                if "lora_module" in name:
-                    #     parameters = chain(parameters, module.lora_module.parameters())
-                    parameters.append(sub_module)
+    def parameters(self):
+        parameters = []
+        layers_dict = get_layers_dict(self)
 
-            return parameters
+        for layer in layers_dict.values():
+            if isinstance(layer, BaseLoRAModule):
+                parameters.append(getattr(layer, "in_proj"))
+                parameters.append(getattr(layer, "out_proj"))
 
-        return _get_lora_parameters(self)
+        return parameters
 
     def enable_lora(self) -> None:
         return enable_lora(self)  # type: ignore
@@ -148,17 +178,20 @@ class LoRA:
         target_module = module if inplace else copy.deepcopy(module)
 
         # Get all of the layers
-        for name in get_weights_layers_names(target_module):
-            # Single layer
-            sub_layer = getattr(target_module, name)
+        for name, layer in get_layers_dict(target_module).items():
 
-            # when you encounter a known layer that can be made into a LoRA layer do it
-            if isinstance(sub_layer, nn.Linear):
-                setattr(target_module, name, LoRA._from_linear(sub_layer, rank))  # type: ignore
-            # elif isinstance(sub_layer, nn.Embedding):
-            #     setattr(target_module, name, LoRA._from_embedding(sub_layer, rank))
-            # elif isinstance(sub_layer, nn.MultiheadAttention):
-            #     setattr(target_module, name, LoRA._from_multihead_attention(sub_layer, rank))  # type: ignore
+            if isinstance(layer, nn.Linear):
+                # when you encounter a known layer that can be made into a LoRA layer do it
+                setattr(target_module, name, LoRA._from_linear(layer, rank))
+
+        # for layer in get_layers(target_module, nn.Linear):
+        #     # when you encounter a known layer that can be made into a LoRA layer do it
+        #     target_module.layer = LoRA._from_linear(layer, rank)  # type: ignore
+
+        # elif isinstance(sub_layer, nn.Embedding):
+        #     setattr(target_module, name, LoRA._from_embedding(sub_layer, rank))
+        # elif isinstance(sub_layer, nn.MultiheadAttention):
+        #     setattr(target_module, name, LoRA._from_multihead_attention(sub_layer, rank))  # type: ignore
 
         # Return the new (or modified) module
         return LoRA(target_module, None, enabled=enabled)

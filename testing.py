@@ -1,11 +1,43 @@
 #!/usr/bin/env python3
 
+from typing import Callable, List
+
 import numpy as np
 from tinygrad import Tensor, nn
 
 from extra.datasets import fetch_mnist
 from extra.training import evaluate, train
 from lora_tinygrad import LoRA
+
+# class TinyNet:
+#     def __init__(self):
+#         self.layers: List[Callable[[Tensor], Tensor]] = [
+#             nn.Linear(784, 784 * 4, bias=True),
+#             Tensor.leakyrelu,
+#             nn.Linear(784 * 4, 784, bias=False),
+#             Tensor.leakyrelu,
+#             nn.Linear(784, 128, bias=False),
+#             Tensor.leakyrelu,
+#             nn.Linear(128, 10, bias=False),
+#         ]
+#
+#     def __call__(self, x: Tensor) -> Tensor:
+#         return x.sequential(self.layers)
+#
+
+# class TinyNet:
+#     def __init__(self):
+#         self.l1 = nn.Linear(784, 784 * 5, bias=False)
+#         self.l2 = nn.Linear(784 * 5, 784, bias=False)
+#         self.l3 = nn.Linear(784, 128, bias=False)
+#         self.l4 = nn.Linear(128, 10, bias=False)
+#
+#     def __call__(self, x):
+#         x = self.l1(x).leakyrelu()
+#         x = self.l2(x).leakyrelu()
+#         x = self.l3(x).leakyrelu()
+#         x = self.l4(x)
+#         return x
 
 
 class TinyNet:
@@ -32,39 +64,37 @@ if __name__ == "__main__":
     x = Tensor.randn(1, 28, 28).reshape(-1)
 
     model = TinyNet()
-    print(model(x).numpy())
+    # print(model(x).numpy())
 
     lora_model = LoRA.from_module(model, rank=5, inplace=False)
-
     print(f"\nPrinting model: {nn.state.get_state_dict(model)}\n")
     print(f"\nPrinting lora_model: {nn.state.get_state_dict(lora_model)}\n")
 
-    y = lora_model(x)
-    print(y.numpy())
-    print(y.requires_grad)
+    # y = lora_model(x)
+    # print(y.numpy())
+    # print(y.requires_grad)
 
     # print(f"\nPrinting model: {nn.state.get_parameters(model)}\n")
     # print(f"\nPrinting lora_model: {nn.state.get_parameters(lora_model)}\n")
     # print(f"\nPrinting lora_model: {lora_model.parameters()}\n")
 
-    lora_model.disable_lora()
-    y = lora_model(x)
-    print(y.numpy())
-    print(y.requires_grad)
-
-    # # Re-enable
-    lora_model.enable_lora()
-    y = lora_model(x)
-    print(y.requires_grad)
-    print(f"Print Lora parameters: {lora_model.parameters()}\n")
-    print(nn.state.get_parameters(lora_model))
+    # lora_model.disable_lora()
+    # y = lora_model(x)
+    # print(y.numpy())
+    # print(y.requires_grad)
+    #
+    # # # Re-enable
+    # lora_model.enable_lora()
+    # y = lora_model(x)
+    # print(y.requires_grad)
+    # print(f"Print Lora parameters: {lora_model.parameters()}\n")
+    # print(nn.state.get_parameters(lora_model))
 
     for _ in range(epochss):
         optimizer = nn.optim.Adam(lora_model.parameters(), lr=lr)
         train(lora_model, X_train, Y_train, optimizer, steps=steps, BS=BS)
         accuracy, Y_test_pred = evaluate(model, X_test, Y_test, return_predict=True)
         lr /= 1.2
-        print(f"reducing lr to {lr:.7f}")
 
     # Get predictions for the lora model
     print("Lora model predictions:")
@@ -84,63 +114,13 @@ if __name__ == "__main__":
     #
     # print(nn.state.get_state_dict(original_model))
 
-# with Tensor.train():
-#     for step in range(1000):
-#         # random sample a batch
-#         samp = np.random.randint(0, X_train.shape[0], size=(64))
-#         batch = Tensor(X_train[samp], requires_grad=False)
-#         # get the corresponding labels
-#         labels = Tensor(Y_train[samp])
-#
-#         # forward pass
-#         out = lora_model(batch)
-#
-#         # compute loss
-#         loss = Tensor.sparse_categorical_crossentropy(out, labels)
-#
-#         # zero gradients
-#         opt.zero_grad()
-#
-#         # backward pass
-#         loss.backward()
-#
-#         # update parameters
-#         opt.step()
-#
-#         # calculate accuracy
-#         pred = out.argmax(axis=-1)
-#         acc = (pred == labels).mean()
-#
-#         if step % 100 == 0:
-# print(f"Step {step+1} | Loss: {loss.numpy()} | Accuracy: {acc.numpy()}")
-
 
 # Super simple linear model
 # model = nn.Linear(784, 2, bias=False)
 
 # model = TinyNet()
 
-# print(f"\nPrinting model: {nn.state.get_state_dict(model)}\n")
-#
-# # Apply LoRA weighst to the model
-# lora_model = LoRA.from_module(model, rank=5)
-#
-# print(f"Printing lora model: {nn.state.get_state_dict(lora_model)}\n")
-#
-# # Train or predict as usual.
-# x = Tensor.randn(1, 28, 28).reshape(-1)
-#
-# y = model(x)
-# # Print the predcitions
-# print(f"Printing model Output: {y.numpy() = }")
-#
-# y_lora = lora_model(x)
-# # Print the predcitions
-# print(f"Printing model Output: {y_lora.numpy() = }")
-#
-# # compute loss, backprop, etc...
-
-# # Merge LoRA weights into the original model.
+# Merge LoRA weights into the original model.
 # new_model = lora_model.merge_lora(inplace=False)  # default: inplace=False
 
 # NOTE: new_model has the same type as the original model!  Inference is just as fast as in the original model.
