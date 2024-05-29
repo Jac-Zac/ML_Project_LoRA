@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import copy
 from collections import OrderedDict
-from typing import (Any, Dict, Generic, Literal, Optional, Tuple, Type, Union,
-                    overload)
+from typing import Any, Dict, Generic, Literal, Optional, Tuple, Type, Union, overload
 
 from tinygrad import Tensor, nn
 
@@ -223,19 +222,35 @@ def disable_lora(module: Union[Type, LoRA]) -> None:
 
 # TODO: needs to be checked
 def merge_lora(module: Union[Type, LoRA], inplace: bool = False):
+    import numpy as np
+
     """Merge all LoRA modules from the model."""
     out = module if inplace else copy.deepcopy(module)
 
-    for name, layer in get_layers_dict(out).items():
-        if isinstance(layer, LoRA):
-            print(name)
-            if layer.lora_module is None:
-                setattr(layer, name, layer.module)
-            else:
-                setattr(
-                    layer, name, layer.lora_module.merge(layer.module, inplace=inplace)
-                )
+    start = out.module.l1.module.weight.numpy()
 
+    print(f"{out.module.l1.module.weight.numpy() = }")
+
+    for name, layer in get_layers_dict(out).items():
+        sub_module = out
+
+        if isinstance(layer, LoRA):
+            if layer.lora_module is None:
+                layer = layer.module
+            else:
+                # Get the sub_module
+                for attr in name.split("."):
+                    sub_module = getattr(sub_module, attr)
+
+                print(f"BEFORE: {sub_module.module.weight.numpy() = }")
+                sub_module = layer.lora_module.merge(layer.module, inplace=inplace)
+                del layer.module
+
+                print(f"AFTER: {sub_module.weight.numpy() = }")
+
+    # end = out.module.l1.weight.numpy()
+
+    # assert not np.allclose(start, end)
     return out
 
 
@@ -243,7 +258,36 @@ def remove_lora(module: Union[Type, LoRA], inplace: bool = False):
     """Remove all LoRA modules from the model."""
     out = module if inplace else copy.deepcopy(module)
 
+    print("BEFORE")
+
     for name, layer in get_layers_dict(out).items():
+        print(name)
+        print(layer)
+        if isinstance(layer, LoRA):
+            # Replace the LoRA module with the original module
+            setattr(out, name, layer.module)
+            # del layer.module
+        else:
+            setattr(out, name, layer)
+            # del layer
+
+    print("AFTER")
+
+    for name, layer in get_layers_dict(out).items():
+        print(name)
+        print(layer)
+
+    return out
+
+
+# FIX: Needs fixing
+"""
+def remove_lora(module: Union[Type, LoRA], inplace: bool = False):
+    # Remove all LoRA modules from the model.
+    out = module if inplace else copy.deepcopy(module)
+
+    for name, layer in get_layers_dict(out).items():
+        sub_module = out
 
         # if isinstance(layer, BaseLoRAModule):
         #     print("Deliting")
@@ -252,18 +296,28 @@ def remove_lora(module: Union[Type, LoRA], inplace: bool = False):
         #     delattr(layer, "out_proj")
 
         if isinstance(layer, LoRA):
-            sub_module = out
-            # # Get the correct attribute
-            for attr in name.split(".")[:-1]:
-                sub_module = getattr(sub_module, attr)
-
-            sub_module = layer.module
+            # print(sub_module)
+            # print(name.split("."))
+            # for attr in name.split("."):
+            #     sub_module = getattr(sub_module, attr)
+            #
+            # print(sub_module)
+            # sub_module = layer.module
+            pass
         else:
-            sub_module = out
-            # # Get the correct attribute
-            for attr in name.split(".")[:-1]:
+            print(sub_module)
+            print(name.split("."))
+            # del sub_module.module
+            for attr in name.split("."):
                 sub_module = getattr(sub_module, attr)
 
-            sub_module = layer
+            # print(sub_module.l1.module.weight)
+            print(layer)
+            # sub_module = layer
+
+            print(sub_module)
 
     return out
+
+
+"""

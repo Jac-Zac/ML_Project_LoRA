@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from tinygrad import Tensor, nn
 
 from .base import BaseLoRAModule
@@ -57,59 +55,37 @@ class LinearLoRAModule(BaseLoRAModule):
         # Multiply by output projection layer
         return x @ self.out_proj
 
+    # FIX: needs fixing
     def merge(self, module: nn.Linear, inplace: bool = False) -> nn.Linear:
         # einstein notation:
         # - i: input features
         # - o: output features
         # - r: rank
-        with Tensor.no_grad():
-            lora_weight = self.out_proj @ self.in_proj.transpose(0, 1)
 
+        # Get the shape of the Linear Layer
+        out_features, in_features = module.weight.shape
+
+        # Avoid tracking the gradient since there is no need for it in the merging
+        with Tensor.train():
             # lora_weight = Tensor.einsum("i r, r o -> o i", self.in_proj, self.out_proj)
+            lora_weight = (self.in_proj @ self.out_proj).transpose(1, 0)
 
+            # Update the weights in place
             if inplace:
-                module.weight.data += lora_weight
+                module.weight += lora_weight
                 return module
 
+            # Update the weights of a new Layer
             out = nn.Linear(
-                in_features=module.in_features,
-                out_features=module.out_features,
+                in_features=in_features,
+                out_features=out_features,
                 bias=module.bias is not None,
             )
-            out.weight.data = module.weight.data + lora_weight
+            out.weight = module.weight + lora_weight
             out.bias = module.bias
             return out
 
     @property
     def weight(self) -> Tensor:
-        return self.out_proj @ self.in_proj.transpose(0, 1)
-        return torch.einsum("i r, r o -> o i", self.in_proj, self.out_proj)
-
-    """ 
-    def merge(self, module: nn.Linear, inplace: bool = False) -> nn.Linear:
-        # einstein notation:
-        # - i: input features
-        # - o: output features
-        # - r: rank
-        with Tensor.no_grad():
-            lora_weight = Tensor.einsum("i r, r o -> o i", self.in_proj, self.out_proj)
-
-            if inplace:
-                module.weight.data += lora_weight
-                return module
-
-            out = nn.Linear(
-                in_features=module.in_features,
-                out_features=module.out_features,
-                bias=module.bias is not None,
-                device=module.weight.device,
-                dtype=module.weight.dtype,
-            )
-            out.weight.data = module.weight.data + lora_weight
-            out.bias = module.bias
-            return out
-
-    @property
-    def weight(self) -> Tensor:
-        return torch.einsum("i r, r o -> o i", self.in_proj, self.out_proj)
-    """
+        # return torch.einsum("i r, r o -> o i", self.in_proj, self.out_proj)
+        return (self.in_proj @ self.out_proj).transpose(1, 0)

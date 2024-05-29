@@ -27,32 +27,32 @@ from lora_tinygrad import LoRA
 #         return x.sequential(self.layers)
 
 
-class TinyNet:
-    def __init__(self):
-        self.l1 = nn.Linear(784, 784 * 3, bias=False)
-        self.l2 = nn.Linear(784 * 3, 784, bias=False)
-        self.l3 = nn.Linear(784, 128, bias=False)
-        self.l4 = nn.Linear(128, 10, bias=False)
-
-    def __call__(self, x):
-        x = self.l1(x).leakyrelu()
-        x = self.l2(x).leakyrelu()
-        x = self.l3(x).leakyrelu()
-        x = self.l4(x)
-        return x
-
-
 # class TinyNet:
 #     def __init__(self):
-#         self.l1 = nn.Linear(784, 128, bias=False)
-#         self.l2 = nn.Linear(128, 10, bias=False)
+#         self.l1 = nn.Linear(784, 784 * 3, bias=False)
+#         self.l2 = nn.Linear(784 * 3, 784, bias=False)
+#         self.l3 = nn.Linear(784, 128, bias=False)
+#         self.l4 = nn.Linear(128, 10, bias=False)
 #
 #     def __call__(self, x):
-#         x = self.l1(x)
-#         x = x.leakyrelu()
-#         x = self.l2(x)
+#         x = self.l1(x).leakyrelu()
+#         x = self.l2(x).leakyrelu()
+#         x = self.l3(x).leakyrelu()
+#         x = self.l4(x)
 #         return x
-#
+
+
+class TinyNet:
+    def __init__(self):
+        self.l1 = nn.Linear(784, 128, bias=False)
+        self.l2 = nn.Linear(128, 10, bias=False)
+
+    def __call__(self, x):
+        x = self.l1(x)
+        x = x.leakyrelu()
+        x = self.l2(x)
+        return x
+
 
 if __name__ == "__main__":
     print("Simulating a pre-trained model, with one epoch..")
@@ -79,11 +79,6 @@ if __name__ == "__main__":
         f"We can see that: {original_parameters = }, lora_params = {lora_parameters = }, thus the model needs to update {(lora_parameters / original_parameters) * 100:.2f}% of the original parameters in this example.\n"
     )
 
-    # original_mode = lora_model.remove_lora(inplace=False)
-    # # print(original_mode(x).numpy)
-    #
-    # print(nn.state.get_state_dict(lora_model))
-
     for _ in range(epochss):
         optimizer = nn.optim.Adam(lora_model.parameters(), lr=lr)
         train(lora_model, X_train, Y_train, optimizer, steps=steps, BS=BS)
@@ -103,27 +98,24 @@ if __name__ == "__main__":
     lora_model.disable_lora()
     print(lora_model(x).numpy())
 
-    original_mode = lora_model.remove_lora(inplace=False)
-    print(original_mode(x).numpy)
+    lora_model.enable_lora()
+    # """
 
+    # Remove model
+    original_model = lora_model.remove_lora(inplace=False)
     print(nn.state.get_state_dict(lora_model))
-    # assert isinstance(original_mode, TinyNet)
-    #
-    # # Get predictions for the original model
-    # print(original_model(x).numpy())
-    #
-    # print(nn.state.get_state_dict(original_model))
 
-    """
+    print(original_model(x).numpy())
 
+    # assert isinstance(original_model, TinyNet)
     # Merge LoRA weights into the original model.
-    new_model = lora_model.merge_lora(inplace=False)  # default: inplace=False
-
+    # new_model = lora_model.merge_lora(inplace=False)  # default: inplace=False
+    #
     # print(f"\nPrinting merged model: {nn.state.get_state_dict(new_model)}\n")
-
-    print("New merged model predictions")
-    print(new_model(x).numpy())
-
+    #
+    # print("New merged model predictions")
+    # print(new_model(x).numpy())
+    #
     # NOTE: new_model has the same type as the original model!  Inference is just as fast as in the original model.
-    assert isinstance(new_model, TinyNet)
-    """
+    # assert isinstance(new_model, TinyNet)
+    # """
