@@ -29,7 +29,7 @@ if __name__ == "__main__":
     BS = 128
     n_outputs = 10
 
-    X_train, Y_train, X_test, Y_test = fetch_mnist()
+    X_train, Y_train, X_test, Y_test = fetch_fashion_mnist()
     steps = len(X_train) // BS
 
     # Define the model
