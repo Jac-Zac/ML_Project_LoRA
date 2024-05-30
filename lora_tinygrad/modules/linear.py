@@ -55,7 +55,7 @@ class LinearLoRAModule(BaseLoRAModule):
         # Multiply by output projection layer
         return x @ self.out_proj
 
-    # FIX: needs fixing
+    # TODO: check if this works correctly
     def merge(self, module: nn.Linear, inplace: bool = False) -> nn.Linear:
         # einstein notation:
         # - i: input features

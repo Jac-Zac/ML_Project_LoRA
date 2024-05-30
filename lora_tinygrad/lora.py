@@ -260,22 +260,46 @@ def remove_lora(module: Union[Type, LoRA], inplace: bool = False):
 
     print("BEFORE")
 
-    for name, layer in get_layers_dict(out).items():
-        print(name)
-        print(layer)
-        if isinstance(layer, LoRA):
-            # Replace the LoRA module with the original module
-            setattr(out, name, layer.module)
-            # del layer.module
+    """
+    for name in nn.state.get_state_dict(out):
+        layer = out
+
+        for attr in name.split(".")[:-1]:
+            layer = getattr(layer, attr)
+
+        # print(name)
+        # print(layer)
+        # print(name)
+        # print(layer)
+        if isinstance(layer, BaseLoRAModule):
+            print("Lora module")
+            print(layer)
+            del out.module.l1.lora_module.in_proj
+            del layer
+            # print(name)
+            # print(layer)
+        elif isinstance(layer, nn.Linear):
+            pass
+            # print(name)
+            # print(layer.weight.shape)
+            # out.module = layer
         else:
-            setattr(out, name, layer)
-            # del layer
+            pass
+
+    """
+    del out.module.l1.lora_module.in_proj
+    del out.module.l1.lora_module.out_proj
+    del out.module.l2.lora_module.in_proj
+    del out.module.l2.lora_module.out_proj
+
+    out = out.module
+    out.l1 = out.l1.module
+    out.l2 = out.l2.module
 
     print("AFTER")
 
-    for name, layer in get_layers_dict(out).items():
+    for name in nn.state.get_state_dict(out):
         print(name)
-        print(layer)
 
     return out
 

@@ -103,7 +103,7 @@ if __name__ == "__main__":
 
     # Remove model
     original_model = lora_model.remove_lora(inplace=False)
-    print(nn.state.get_state_dict(lora_model))
+    print(nn.state.get_state_dict(original_model))
 
     print(original_model(x).numpy())
 
