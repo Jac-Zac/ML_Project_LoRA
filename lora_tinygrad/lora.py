@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import copy
 from collections import OrderedDict
-from typing import Any, Dict, Generic, Literal, Optional, Tuple, Type, Union, overload
+from typing import (Any, Dict, Generic, Literal, Optional, Tuple, Type, Union,
+                    overload)
 
 from tinygrad import Tensor, nn
 
@@ -260,11 +261,12 @@ def remove_lora(module: Union[Type, LoRA], inplace: bool = False):
 
     print("BEFORE")
 
-    """
     for name in nn.state.get_state_dict(out):
+        # for name, layer in get_layers_dict(out).items():
         layer = out
+        name = name.split(".")
 
-        for attr in name.split(".")[:-1]:
+        for attr in name[:-1]:
             layer = getattr(layer, attr)
 
         # print(name)
@@ -272,25 +274,27 @@ def remove_lora(module: Union[Type, LoRA], inplace: bool = False):
         # print(name)
         # print(layer)
         if isinstance(layer, BaseLoRAModule):
-            print("Lora module")
-            print(layer)
-            del out.module.l1.lora_module.in_proj
-            del layer
             # print(name)
-            # print(layer)
+            # Remove last LoRA layer
+            delattr(layer, name[-1])
         elif isinstance(layer, nn.Linear):
             pass
             # print(name)
-            # print(layer.weight.shape)
-            # out.module = layer
+            # out = layer
+            # layer = layer.module
+            # layer = layer.module
         else:
             pass
 
-    """
-    del out.module.l1.lora_module.in_proj
-    del out.module.l1.lora_module.out_proj
-    del out.module.l2.lora_module.in_proj
-    del out.module.l2.lora_module.out_proj
+    # layer = out
+    # name = ["module", "l1", "lora_module"]
+    # for attr in name[:-1]:
+    #     layer = getattr(layer, attr)
+    #
+    # delattr(layer, name[-1])
+
+    # del layer
+    # del out.module.l1.lora_module
 
     out = out.module
     out.l1 = out.l1.module
