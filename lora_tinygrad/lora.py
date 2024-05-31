@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import copy
 from collections import OrderedDict
-from typing import Any, Dict, Generic, Literal, Optional, Tuple, Type, Union, overload
+from typing import (Any, Dict, Generic, Literal, Optional, Tuple, Type, Union,
+                    overload)
 
 from tinygrad import Tensor, nn
 
@@ -17,35 +18,11 @@ from .modules.linear import LinearLoRAModule
 # from lora_tinygrad.modules.linear import LinearLoRAModule
 
 
-# NOTE: custom function added for ease of use
-def get_layers_dict(obj, layer_name=""):
-    """
-    Return the layers of a network in a dictionary with layer_name and layer
-    """
-    layers = {}
-
-    # layers[layer_name] = obj  # Store the current object with its layer name as key
-    layers[layer_name.lstrip(".")] = (
-        obj  # Store the current object with its layer name as key without the leading "."
-    )
-
-    if hasattr(obj, "_asdict"):
-        for key, value in obj._asdict().items():
-            layers.update(get_layers_dict(value, f"{layer_name}.{key}"))
-    elif isinstance(obj, OrderedDict):
-        for key, value in obj.items():
-            layers.update(get_layers_dict(value, f"{layer_name}.{key}"))
-    elif hasattr(obj, "__dict__"):
-        for key, value in obj.__dict__.items():
-            layers.update(get_layers_dict(value, f"{layer_name}.{key}"))
-    elif isinstance(obj, (list, tuple)):
-        for i, x in enumerate(obj):
-            layers.update(get_layers_dict(x, f"{layer_name}.{i}"))
-    elif isinstance(obj, dict):
-        for k, v in obj.items():
-            layers.update(get_layers_dict(v, f"{layer_name}.{k}"))
-
-    return layers
+def get_nested_attr(obj, attr):
+    """Recursively get the nested attribute."""
+    for attribute in attr:
+        obj = getattr(obj, attribute)
+    return obj
 
 
 class LoRA:
@@ -81,12 +58,16 @@ class LoRA:
     # I have to only return the lora parameters
     def parameters(self):
         parameters = []
-        layers_dict = get_layers_dict(self)
 
-        for layer in layers_dict.values():
+        for name in nn.state.get_state_dict(self):
+            # Split the attributes
+            name = name.split(".")
+            # Layers is all of the attribute but the last one
+            layer = get_nested_attr(self, name[:-1])
+
             if isinstance(layer, BaseLoRAModule):
-                parameters.append(getattr(layer, "in_proj"))
-                parameters.append(getattr(layer, "out_proj"))
+                # NOTE: name[-1] for linear layer will be the out_proj and in_proj for example
+                parameters.append(getattr(layer, name[-1]))
 
         return parameters
 
@@ -159,20 +140,18 @@ class LoRA:
         out = module if inplace else copy.deepcopy(module)
 
         # Get all of the layers
-        for name, layer in get_layers_dict(out).items():
+        for name in nn.state.get_state_dict(out):
+            name = name.split(".")[:-1]
+            layer = get_nested_attr(out, name)
 
             if isinstance(layer, nn.Linear):
                 # when you encounter a known layer that can be made into a LoRA layer do it
-                setattr(out, name, LoRA._from_linear(layer, rank))
+                setattr(out, name[0], LoRA._from_linear(layer, rank))
 
-        # for layer in get_layers(target_module, nn.Linear):
-        #     # when you encounter a known layer that can be made into a LoRA layer do it
-        #     target_module.layer = LoRA._from_linear(layer, rank)  # type: ignore
-
-        # elif isinstance(sub_layer, nn.Embedding):
-        #     setattr(target_module, name, LoRA._from_embedding(sub_layer, rank))
-        # elif isinstance(sub_layer, nn.MultiheadAttention):
-        #     setattr(target_module, name, LoRA._from_multihead_attention(sub_layer, rank))  # type: ignore
+            # elif isinstance(sub_layer, nn.Embedding):
+            #     setattr(target_module, name, LoRA._from_embedding(sub_layer, rank))
+            # elif isinstance(sub_layer, nn.MultiheadAttention):
+            #     setattr(target_module, name, LoRA._from_multihead_attention(sub_layer, rank))  # type: ignore
 
         # Return the new (or modified) module
         return LoRA(out, None, enabled=enabled)
@@ -205,14 +184,18 @@ class LoRA:
 
 def enable_lora(module: Union[Type, LoRA]) -> None:
     # Enable only the Lora layers through all the layers
-    for layer in get_layers_dict(module).values():
+    for name in nn.state.get_state_dict(module):
+        layer = get_nested_attr(module, name.split(".")[:-2])
+
         if isinstance(layer, LoRA):
             layer.enabled = True
 
 
 def disable_lora(module: Union[Type, LoRA]) -> None:
-    # Disable only the Lora layers through all the layers
-    for layer in get_layers_dict(module).values():
+    # Enable only the Lora layers through all the layers
+    for name in nn.state.get_state_dict(module):
+        layer = get_nested_attr(module, name.split(".")[:-2])
+
         if isinstance(layer, LoRA):
             layer.enabled = False
 
@@ -251,100 +234,28 @@ def merge_lora(module: Union[Type, LoRA], inplace: bool = False):
     return out
 
 
-# WARNING: Working on it
 def remove_lora(module: Union[Type, LoRA], inplace: bool = False):
     """Remove all LoRA modules from the model."""
     out = module if inplace else copy.deepcopy(module)
 
-    print("BEFORE")
-    layer_dict = get_layers_dict(out)
-
-    # for name in nn.state.get_state_dict(out):
-    for name, layer in layer_dict.items():
-        # layer = out
-        # name = name.split(".")
-
-        # for attr in name[:-1]:
-        #     layer = getattr(layer, attr)
-
-        # print(name)
-        # print(layer)
-        # print(name)
-        # print(layer)
-        if isinstance(layer, BaseLoRAModule):
-            # TODO: I think there is no need for this
-
-            # print(name)
-            # Remove last LoRA layer
-            # if hasattr(layer_dict, name):
-            #     delattr(layer, name)
-            #     delattr(layer_dict, name)
-
-            pass
-        # HACK: This is an hack
-        elif isinstance(layer, nn.Linear):
-            # sub_module = getattr(out, "module")
-            # sub_module = getattr(sub_module, "l1")
-            # sub_module = layer
-            pass
-            # layer = layer.module
-            # layer = layer.module
-        else:
-            pass
-
-    # NOTE: This is enough for everyhting
-    # This has to be done if linear
-    out.module.l1 = out.module.l1.module
-    out.module.l2 = out.module.l2.module
-
+    # Remove LoRA parent module
     out = out.module
 
-    print("AFTER")
+    # List to save the attributes to modify
+    attributes_to_modify = []
 
     for name in nn.state.get_state_dict(out):
-        print(name)
+        # Get the layer based on the name recursively getting the correct attribuet
+        layer = get_nested_attr(out, name.split(".")[:-1])
+        if isinstance(layer, nn.Linear):
+            # Add the attribute name to the list to be modified
+            attributes_to_modify.append((name.split(".module")[0], layer))
+
+    # Modify the attributes outside the loop to avoid issues with getattr
+    for name, layer in attributes_to_modify:
+        # NOTE: This is an example:
+        # And we set it equal to the current layer:
+        # out.l1 = out.l1.module
+        setattr(out, name, layer)
 
     return out
-
-
-# FIX: Needs fixing
-"""
-def remove_lora(module: Union[Type, LoRA], inplace: bool = False):
-    # Remove all LoRA modules from the model.
-    out = module if inplace else copy.deepcopy(module)
-
-    for name, layer in get_layers_dict(out).items():
-        sub_module = out
-
-        # if isinstance(layer, BaseLoRAModule):
-        #     print("Deliting")
-        #     print(getattr(layer, "in_proj"))
-        #     delattr(layer, "in_proj")
-        #     delattr(layer, "out_proj")
-
-        if isinstance(layer, LoRA):
-            # print(sub_module)
-            # print(name.split("."))
-            # for attr in name.split("."):
-            #     sub_module = getattr(sub_module, attr)
-            #
-            # print(sub_module)
-            # sub_module = layer.module
-            pass
-        else:
-            print(sub_module)
-            print(name.split("."))
-            # del sub_module.module
-            for attr in name.split("."):
-                sub_module = getattr(sub_module, attr)
-
-            # print(sub_module.l1.module.weight)
-            print(layer)
-            # sub_module = layer
-
-            print(sub_module)
-
-    return out
-
-
-"""

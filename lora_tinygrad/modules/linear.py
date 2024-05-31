@@ -5,6 +5,7 @@ from tinygrad import Tensor, nn
 from .base import BaseLoRAModule
 
 
+# class LinearLoRAModule(BaseLoRAModule, nn.Linear):
 class LinearLoRAModule(BaseLoRAModule):
     def __init__(
         self,
