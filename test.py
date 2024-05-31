@@ -57,7 +57,7 @@ class TinyNet:
 if __name__ == "__main__":
     print("Simulating a pre-trained model, with one epoch..")
     lr = 1e-3
-    epochss = 1
+    epochs = 1
     BS = 128
 
     X_train, Y_train, X_test, Y_test = fetch_mnist()
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     steps = len(X_train) // BS
     model = TinyNet()
 
-    # Print the model output
+    # Print the model output to realize it at least once
     x = Tensor.randn(1, 28, 28).reshape(-1)
     print("\033[92mModel predictions when not modified\033[0m")
     print(model(x).numpy())
@@ -81,7 +81,7 @@ if __name__ == "__main__":
         f"We can see that: {original_parameters = }, lora_params = {lora_parameters = }, thus the model needs to update {(lora_parameters / original_parameters) * 100:.2f}% of the original parameters in this example.\n"
     )
 
-    for _ in range(epochss):
+    for _ in range(epochs):
         optimizer = nn.optim.Adam(lora_model.parameters(), lr=lr)
         train(lora_model, X_train, Y_train, optimizer, steps=steps, BS=BS)
         accuracy, Y_test_pred = evaluate(
@@ -92,10 +92,9 @@ if __name__ == "__main__":
     # Testing things out
     # Defining the random tensor to pass through the models
 
-    # FIX: Needs to fix the fact that if I put this here it doesn't work
-    # x = Tensor.randn(1, 28, 28).reshape(-1)
-    # print("\033[92mModel predictions when not modified\033[0m")
-    # print(model(x).numpy())
+    # NOTE: If I only compute the output of the model here it never realized
+    print("\033[92mModel predictions when not modified\033[0m")
+    print(model(x).numpy())
 
     # Get predictions for the lora model
     print("\033[94mLora model predictions:\033[0m")
