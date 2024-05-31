@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import copy
 from collections import OrderedDict
-from typing import (Any, Dict, Generic, Literal, Optional, Tuple, Type, Union,
-                    overload)
+from typing import Any, Dict, Generic, Literal, Optional, Tuple, Type, Union, overload
 
 from tinygrad import Tensor, nn
 
@@ -258,33 +257,42 @@ def remove_lora(module: Union[Type, LoRA], inplace: bool = False):
     out = module if inplace else copy.deepcopy(module)
 
     print("BEFORE")
+    layer_dict = get_layers_dict(out)
 
-    for name in nn.state.get_state_dict(out):
-        layer = out
-        name = name.split(".")
+    # for name in nn.state.get_state_dict(out):
+    for name, layer in layer_dict.items():
+        # layer = out
+        # name = name.split(".")
 
-        for attr in name[:-1]:
-            layer = getattr(layer, attr)
+        # for attr in name[:-1]:
+        #     layer = getattr(layer, attr)
 
         # print(name)
         # print(layer)
         # print(name)
         # print(layer)
         if isinstance(layer, BaseLoRAModule):
+            # TODO: I think there is no need for this
+
             # print(name)
             # Remove last LoRA layer
-            delattr(layer, name[-1])
+            # if hasattr(layer_dict, name):
+            #     delattr(layer, name)
+            #     delattr(layer_dict, name)
 
+            pass
         # HACK: This is an hack
         elif isinstance(layer, nn.Linear):
-            sub_module = getattr(out, "module")
-            sub_module = getattr(sub_module, "l1")
-            sub_module = layer
+            # sub_module = getattr(out, "module")
+            # sub_module = getattr(sub_module, "l1")
+            # sub_module = layer
+            pass
             # layer = layer.module
             # layer = layer.module
         else:
             pass
 
+    # NOTE: This is enough for everyhting
     # This has to be done if linear
     out.module.l1 = out.module.l1.module
     out.module.l2 = out.module.l2.module
