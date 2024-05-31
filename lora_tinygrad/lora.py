@@ -18,12 +18,11 @@ from .modules.linear import LinearLoRAModule
 # from lora_tinygrad.modules.linear import LinearLoRAModule
 
 
+# NOTE: custom function added for ease of use
 def get_layers_dict(obj, layer_name=""):
     """
     Return the layers of a network in a dictionary with layer_name and layer
     """
-
-    # NOTE: custom function added for ease of use
     layers = {}
 
     # layers[layer_name] = obj  # Store the current object with its layer name as key
@@ -67,11 +66,9 @@ class LoRA:
         else:
             self.enable_lora()
 
-    # TODO: Improve code readability
     def __call__(self, x: Tensor, *args, **kwargs) -> Tensor:
-
-        # Run the operation without gradient if there is no lora and gradient is enable else run it with the gradient
-        Tensor.no_grad = not ((self.lora_module is None) and (Tensor.no_grad == False))
+        # Disable gradient if LORA is not present and gradients are enabled, otherwise enable gradients
+        Tensor.no_grad = not (self.lora_module is None and not Tensor.no_grad)
         y = self.module(x, *args, **kwargs)
         # Enable the gradient again
         Tensor.no_grad = False
@@ -112,7 +109,7 @@ class LoRA:
     @classmethod
     def _from_linear(cls, module: nn.Linear, rank: int) -> LoRA:
         # Get the input and output size
-        out_size, in_size = nn.state.get_state_dict(module)["weight"].shape
+        out_size, in_size = module.weight.shape
 
         # Initialize a new LoRA layer
         lora_module = LinearLoRAModule(in_size, out_size, rank=rank)
@@ -181,30 +178,30 @@ class LoRA:
         # Return the new (or modified) module
         return LoRA(out, None, enabled=enabled)
 
-    # @property
-    # def weight(self) -> Tensor:
-    #     if not hasattr(self.module, "weight"):
-    #         raise AttributeError("Module has no attribute 'weight'")
-    #
-    #     if self.enabled and self.lora_module is not None:
-    #         assert hasattr(self.lora_module, "weight")
-    #         return self.module.weight + self.lora_module.weight
-    #     else:
-    #         return self.module.weight
+    @property
+    def weight(self) -> Tensor:
+        if not hasattr(self.module, "weight"):
+            raise AttributeError("Module has no attribute 'weight'")
 
-    # @property
-    # def bias(self) -> Optional[Tensor]:
-    #     if not hasattr(self.module, "bias"):
-    #         return None
-    #
-    #     if (
-    #         self.enabled
-    #         and self.lora_module is not None
-    #         and hasattr(self.lora_module, "bias")
-    #     ):
-    #         return self.module.bias + self.lora_module.bias
-    #     else:
-    #         return self.module.bias
+        if self.enabled and self.lora_module is not None:
+            assert hasattr(self.lora_module, "weight")
+            return self.module.weight + self.lora_module.weight
+        else:
+            return self.module.weight
+
+    @property
+    def bias(self) -> Optional[Tensor]:
+        if not hasattr(self.module, "bias"):
+            return None
+
+        if (
+            self.enabled
+            and self.lora_module is not None
+            and hasattr(self.lora_module, "bias")
+        ):
+            return self.module.bias + self.lora_module.bias
+        else:
+            return self.module.bias
 
 
 def enable_lora(module: Union[Type, LoRA]) -> None:
@@ -255,6 +252,7 @@ def merge_lora(module: Union[Type, LoRA], inplace: bool = False):
     return out
 
 
+# WARNING: Working on it
 def remove_lora(module: Union[Type, LoRA], inplace: bool = False):
     """Remove all LoRA modules from the model."""
     out = module if inplace else copy.deepcopy(module)
@@ -262,7 +260,6 @@ def remove_lora(module: Union[Type, LoRA], inplace: bool = False):
     print("BEFORE")
 
     for name in nn.state.get_state_dict(out):
-        # for name, layer in get_layers_dict(out).items():
         layer = out
         name = name.split(".")
 
@@ -277,28 +274,22 @@ def remove_lora(module: Union[Type, LoRA], inplace: bool = False):
             # print(name)
             # Remove last LoRA layer
             delattr(layer, name[-1])
+
+        # HACK: This is an hack
         elif isinstance(layer, nn.Linear):
-            pass
-            # print(name)
-            # out = layer
+            sub_module = getattr(out, "module")
+            sub_module = getattr(sub_module, "l1")
+            sub_module = layer
             # layer = layer.module
             # layer = layer.module
         else:
             pass
 
-    # layer = out
-    # name = ["module", "l1", "lora_module"]
-    # for attr in name[:-1]:
-    #     layer = getattr(layer, attr)
-    #
-    # delattr(layer, name[-1])
-
-    # del layer
-    # del out.module.l1.lora_module
+    # This has to be done if linear
+    out.module.l1 = out.module.l1.module
+    out.module.l2 = out.module.l2.module
 
     out = out.module
-    out.l1 = out.l1.module
-    out.l2 = out.l2.module
 
     print("AFTER")
 
