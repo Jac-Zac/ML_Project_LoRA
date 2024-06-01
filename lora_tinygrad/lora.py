@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import copy
 from collections import OrderedDict
-from typing import (Any, Dict, Generic, Literal, Optional, Tuple, Type, Union,
-                    overload)
+from typing import Any, Dict, Generic, Literal, Optional, Tuple, Type, Union, overload
 
 from tinygrad import Tensor, nn
 
@@ -201,62 +200,43 @@ def disable_lora(module: Union[Type, LoRA]) -> None:
 
 
 # TODO: needs to be checked
-def merge_lora(module: Union[Type, LoRA], inplace: bool = False):
-    import numpy as np
-
-    """Merge all LoRA modules from the model."""
+def merge_lora(module: Union[Type, "LoRA"], inplace: bool = False):
     out = module if inplace else copy.deepcopy(module)
-
-    # Remove LoRA parent module
     out = out.module
 
-    # List to save the attributes to modify
-    attributes_to_modify = []
-
     for name in nn.state.get_state_dict(out):
-        layer = get_nested_attr(out, name.split(".")[:-1])
+        name = name.split(".")
+        # Get layer and parent_layer
+        parent_layer = get_nested_attr(out, name[:-2])
+        # layer = get_nested_attr(out, name[:-2])
+        layer = getattr(parent_layer, name[-2])
+
         if isinstance(layer, BaseLoRAModule):
-            layer = get_nested_attr(out, name.split(".")[:-2])
-            # print(layer)
-            if layer.lora_module is None:
-                # print("Got here")
-                # attributes_to_modify.append(
-                #     (
-                #         name.split(".module")[0],
-                #         get_nested_attr(out, name.split(".")[:-1]),
-                #     )
+            if parent_layer.lora_module is not None:
+                print(layer)
+                print(name)
+                print(name[:-2])
+                # Check if already merged
+                # if not hasattr(parent_layer, "merged") or not parent_layer.merged:
+                # Merge the LoRA module into the original module
+                # parent_layer = parent_layer.lora_module.merge(
+                #     parent_layer.module, inplace=inplace
                 # )
-                pass
-            else:
-                print(name.split(".")[:-2])
-                # layer.module = layer.lora_module.merge(layer.module, inplace=inplace)
-                layer.module = layer.lora_module.merge(layer.module, inplace=inplace)
+                parent_layer.module = parent_layer.lora_module.merge(
+                    parent_layer.module, inplace=inplace
+                )
+                print(parent_layer)
+                print(parent_layer.module)
+                # parent_layer = parent_layer.module
+                break
 
-                # NOTE: After this I have to remove the lora_module
+    out.l1 = out.l1.module
 
-    # for name in nn.state.get_state_dict(out):
-    #     layer = get_nested_attr(out, name.split(".")[:-1])
-    #     print(name.split(".")[:-1])
-    #
-    #     if isinstance(layer, nn.Linear):
-    #         print(f"Prining weight: {layer.weight.numpy()}")
-    #         # Add the attribute name to the list to be modified
-    #         attributes_to_modify.append((name.split(".module")[0], layer))
-    #         # break
-
-    for name, layer in attributes_to_modify:
-        # NOTE: This is an example:
-        # And we set it equal to the current layer:
-        # out.l1 = out.l1.module
-        setattr(out, name, layer)
-
-    # end = out.l1.weight.numpy()
-    # assert not np.allclose(start, end)
     return out
 
 
 def remove_lora(module: Union[Type, LoRA], inplace: bool = False):
-    """Remove all LoRA modules from the model."""
+    """Remove all LORA modules from the model."""
     out = module if inplace else copy.deepcopy(module)
 
     # Remove LoRA parent module
