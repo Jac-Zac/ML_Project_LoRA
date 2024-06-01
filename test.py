@@ -108,24 +108,26 @@ if __name__ == "__main__":
     lora_model.enable_lora()
     print(lora_model(x).numpy())
 
-    # Remove model
-    original_model = lora_model.remove_lora(inplace=False)
+    # Merge Lora
+    new_model = lora_model.merge_lora(inplace=False)
 
-    print("\033[91mModel prediction after I removed LoRA\033[0m")
-    print(original_model(x).numpy())
+    print("\033[91mModel prediction after I merged LoRA\033[0m")
+    print(new_model(x).numpy())
 
     print(
-        f"\nState dict after I have removed LoRA: {nn.state.get_state_dict(original_model)}"
+        f"\nState dict after I have removed LoRA: {nn.state.get_state_dict(new_model)}"
     )
 
-    # assert isinstance(original_model, TinyNet)
-    # Merge LoRA weights into the original model.
-    # new_model = lora_model.merge_lora(inplace=False)  # default: inplace=False
+    # Remove model
+    # original_model = lora_model.remove_lora(inplace=False)
     #
-    # print(f"\nPrinting merged model: {nn.state.get_state_dict(new_model)}\n")
+    # print("\033[91mModel prediction after I removed LoRA\033[0m")
+    # print(original_model(x).numpy())
     #
-    # print("New merged model predictions")
-    # print(new_model(x).numpy())
+    # print(
+    #     f"\nState dict after I have removed LoRA: {nn.state.get_state_dict(original_model)}"
+    # )
+
     #
     # NOTE: new_model has the same type as the original model!  Inference is just as fast as in the original model.
     # assert isinstance(new_model, TinyNet)

@@ -207,29 +207,50 @@ def merge_lora(module: Union[Type, LoRA], inplace: bool = False):
     """Merge all LoRA modules from the model."""
     out = module if inplace else copy.deepcopy(module)
 
-    start = out.module.l1.module.weight.numpy()
+    # Remove LoRA parent module
+    out = out.module
 
-    print(f"{out.module.l1.module.weight.numpy() = }")
+    # List to save the attributes to modify
+    attributes_to_modify = []
 
-    for name, layer in get_layers_dict(out).items():
-        sub_module = out
-
-        if isinstance(layer, LoRA):
+    for name in nn.state.get_state_dict(out):
+        layer = get_nested_attr(out, name.split(".")[:-1])
+        if isinstance(layer, BaseLoRAModule):
+            layer = get_nested_attr(out, name.split(".")[:-2])
+            # print(layer)
             if layer.lora_module is None:
-                layer = layer.module
+                # print("Got here")
+                # attributes_to_modify.append(
+                #     (
+                #         name.split(".module")[0],
+                #         get_nested_attr(out, name.split(".")[:-1]),
+                #     )
+                # )
+                pass
             else:
-                # Get the sub_module
-                for attr in name.split("."):
-                    sub_module = getattr(sub_module, attr)
+                print(name.split(".")[:-2])
+                # layer.module = layer.lora_module.merge(layer.module, inplace=inplace)
+                layer.module = layer.lora_module.merge(layer.module, inplace=inplace)
 
-                print(f"BEFORE: {sub_module.module.weight.numpy() = }")
-                sub_module = layer.lora_module.merge(layer.module, inplace=inplace)
-                del layer.module
+                # NOTE: After this I have to remove the lora_module
 
-                print(f"AFTER: {sub_module.weight.numpy() = }")
+    # for name in nn.state.get_state_dict(out):
+    #     layer = get_nested_attr(out, name.split(".")[:-1])
+    #     print(name.split(".")[:-1])
+    #
+    #     if isinstance(layer, nn.Linear):
+    #         print(f"Prining weight: {layer.weight.numpy()}")
+    #         # Add the attribute name to the list to be modified
+    #         attributes_to_modify.append((name.split(".module")[0], layer))
+    #         # break
 
-    # end = out.module.l1.weight.numpy()
+    for name, layer in attributes_to_modify:
+        # NOTE: This is an example:
+        # And we set it equal to the current layer:
+        # out.l1 = out.l1.module
+        setattr(out, name, layer)
 
+    # end = out.l1.weight.numpy()
     # assert not np.allclose(start, end)
     return out
 
