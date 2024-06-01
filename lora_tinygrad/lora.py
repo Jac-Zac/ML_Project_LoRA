@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import copy
 from collections import OrderedDict
-from typing import Any, Dict, Generic, Literal, Optional, Tuple, Type, Union, overload
+from typing import (Any, Dict, Generic, Literal, Optional, Tuple, Type, Union,
+                    overload)
 
 from tinygrad import Tensor, nn
 
@@ -208,29 +209,21 @@ def merge_lora(module: Union[Type, "LoRA"], inplace: bool = False):
         name = name.split(".")
         # Get layer and parent_layer
         parent_layer = get_nested_attr(out, name[:-2])
-        # layer = get_nested_attr(out, name[:-2])
-        layer = getattr(parent_layer, name[-2])
+
+        if hasattr(parent_layer, name[-2]):
+            layer = getattr(parent_layer, name[-2])
+        else:
+            # Since it has already been removed
+            continue
 
         if isinstance(layer, BaseLoRAModule):
             if parent_layer.lora_module is not None:
-                print(layer)
-                print(name)
-                print(name[:-2])
                 # Check if already merged
-                # if not hasattr(parent_layer, "merged") or not parent_layer.merged:
-                # Merge the LoRA module into the original module
-                # parent_layer = parent_layer.lora_module.merge(
-                #     parent_layer.module, inplace=inplace
-                # )
                 parent_layer.module = parent_layer.lora_module.merge(
                     parent_layer.module, inplace=inplace
                 )
-                print(parent_layer)
-                print(parent_layer.module)
-                # parent_layer = parent_layer.module
-                break
 
-    out.l1 = out.l1.module
+                setattr(out, name[0], parent_layer.module)
 
     return out
 
