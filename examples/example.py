@@ -5,7 +5,14 @@ import sys
 
 import numpy as np
 from tinygrad import Tensor, nn
-from utils import *
+from utils import (
+    evaluate,
+    fetch_fashion_mnist,
+    get_mislabeled_counts,
+    mix_old_and_new_data,
+    pretty_print_mislabeled_counts,
+    train,
+)
 
 # Get the path of the parent directory
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

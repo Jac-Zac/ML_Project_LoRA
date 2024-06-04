@@ -5,8 +5,8 @@ from typing import Optional, Type, Union
 
 from tinygrad import Tensor, nn
 
-from .modules.base import BaseLoRAModule
-from .modules.linear import LinearLoRAModule
+from .modules.base import BaseDoRAModule
+from .modules.linear import LinearDoRAModule
 
 
 def get_nested_attr(obj, attr):
@@ -16,37 +16,37 @@ def get_nested_attr(obj, attr):
     return obj
 
 
-class LoRA:
+class DoRA:
     def __init__(
         self,
         module,
-        lora_module: Optional[BaseLoRAModule],
+        dora_module: Optional[BaseDoRAModule],
         enabled: bool = True,
     ):
         super().__init__()
         self.module = module
-        self.lora_module = lora_module
-        self.enabled = enabled and lora_module is not None
+        self.dora_module = dora_module
+        self.enabled = enabled and dora_module is not None
 
         if not enabled:
-            self.disable_lora()
+            self.disable_dora()
         else:
-            self.enable_lora()
+            self.enable_dora()
 
     def __call__(self, x: Tensor, *args, **kwargs) -> Tensor:
-        # Disable gradient if LORA is not present and gradients are enabled, otherwise enable gradients
-        Tensor.no_grad = not (self.lora_module is None and not Tensor.no_grad)
+        # Disable gradient if DoRA is not present and gradients are enabled, otherwise enable gradients
+        Tensor.no_grad = not (self.dora_module is None and not Tensor.no_grad)
         y = self.module(x, *args, **kwargs)
         # Enable the gradient again
         Tensor.no_grad = False
 
-        # IF lora is enable also add the lora
-        if self.enabled and self.lora_module is not None:
-            y = y + self.lora_module(x)
+        # IF dora is enable also add the dora
+        if self.enabled and self.dora_module is not None:
+            y = y + self.dora_module(x)
 
         return y
 
-    # I have to only return the lora parameters
+    # I have to only return the dora parameters
     def parameters(self):
         parameters = []
 
@@ -56,37 +56,33 @@ class LoRA:
             # Layers is all of the attribute but the last one
             layer = get_nested_attr(self, name[:-1])
 
-            if isinstance(layer, BaseLoRAModule):
+            if isinstance(layer, BaseDoRAModule):
                 # NOTE: name[-1] for linear layer will be the out_proj and in_proj for example
                 parameters.append(getattr(layer, name[-1]))
 
         return parameters
 
-    def enable_lora(self) -> None:
-        return enable_lora(self)  # type: ignore
+    def enable_dora(self) -> None:
+        return enable_dora(self)  # type: ignore
 
-    def disable_lora(self) -> None:
-        return disable_lora(self)  # type: ignore
+    def disable_dora(self) -> None:
+        return disable_dora(self)  # type: ignore
 
-    def remove_lora(self, inplace: bool = False):
-        """Remove all LoRA modules from the model."""
-        return remove_lora(self, inplace=inplace)  # type: ignore
+    def remove_dora(self, inplace: bool = False):
+        """Remove all DoRA modules from the model."""
+        return remove_dora(self, inplace=inplace)  # type: ignore
 
-    def merge_lora(self: LoRA, inplace: bool = False):
-        return merge_lora(self, inplace=inplace)  # type: ignore
+    def merge_dora(self: DoRA, inplace: bool = False):
+        return merge_dora(self, inplace=inplace)  # type: ignore
 
     @classmethod
-    def _from_linear(cls, module: nn.Linear, rank: int) -> LoRA:
+    def _from_linear(cls, module: nn.Linear, rank: int) -> DoRA:
         # Get the input and output size
         out_size, in_size = module.weight.shape
 
-        # Initialize a new LoRA layer
-        lora_module = LinearLoRAModule(in_size, out_size, rank=rank)
-        return LoRA(module, lora_module)
-
-    # Potentially you could implement something like this
-    # @classmethod
-    # def _from_multihead_attention(cls, module: nn.MultiheadAttention, rank: int) -> MultiheadAttentionLoRA:
+        # Initialize a new DoRA layer
+        dora_module = LinearDoRAModule(in_size, out_size, rank=rank)
+        return DoRA(module, dora_module)
 
     # Actual implementation of from module
     @classmethod
@@ -106,22 +102,22 @@ class LoRA:
             layer = get_nested_attr(out, name)
 
             if isinstance(layer, nn.Linear):
-                # when you encounter a known layer that can be made into a LoRA layer do it
-                setattr(out, name[0], LoRA._from_linear(layer, rank))
+                # when you encounter a known layer that can be made into a DoRA layer do it
+                setattr(out, name[0], DoRA._from_linear(layer, rank))
 
             # Here you could potentially add options for other layers such as for MultiheadAttention
 
         # Return the new (or modified) module
-        return LoRA(out, None, enabled=enabled)
+        return DoRA(out, None, enabled=enabled)
 
     @property
     def weight(self) -> Tensor:
         if not hasattr(self.module, "weight"):
             raise AttributeError("Module has no attribute 'weight'")
 
-        if self.enabled and self.lora_module is not None:
-            assert hasattr(self.lora_module, "weight")
-            return self.module.weight + self.lora_module.weight
+        if self.enabled and self.dora_module is not None:
+            assert hasattr(self.dora_module, "weight")
+            return self.module.weight + self.dora_module.weight
         else:
             return self.module.weight
 
@@ -132,33 +128,33 @@ class LoRA:
 
         if (
             self.enabled
-            and self.lora_module is not None
-            and hasattr(self.lora_module, "bias")
+            and self.dora_module is not None
+            and hasattr(self.dora_module, "bias")
         ):
-            return self.module.bias + self.lora_module.bias
+            return self.module.bias + self.dora_module.bias
         else:
             return self.module.bias
 
 
-def enable_lora(module: Union[Type, LoRA]) -> None:
-    # Enable only the Lora layers through all the layers
+def enable_dora(module: Union[Type, DoRA]) -> None:
+    # Enable only the Dora layers through all the layers
     for name in nn.state.get_state_dict(module):
         layer = get_nested_attr(module, name.split(".")[:-2])
 
-        if isinstance(layer, LoRA):
+        if isinstance(layer, DoRA):
             layer.enabled = True
 
 
-def disable_lora(module: Union[Type, LoRA]) -> None:
-    # Enable only the Lora layers through all the layers
+def disable_dora(module: Union[Type, DoRA]) -> None:
+    # Enable only the Dora layers through all the layers
     for name in nn.state.get_state_dict(module):
         layer = get_nested_attr(module, name.split(".")[:-2])
 
-        if isinstance(layer, LoRA):
+        if isinstance(layer, DoRA):
             layer.enabled = False
 
 
-def merge_lora(module: Union[Type, "LoRA"], inplace: bool = False):
+def merge_dora(module: Union[Type, "DoRA"], inplace: bool = False):
     out = module if inplace else copy.deepcopy(module)
     out = out.module
 
@@ -173,10 +169,10 @@ def merge_lora(module: Union[Type, "LoRA"], inplace: bool = False):
             # Since it has already been removed
             continue
 
-        if isinstance(layer, BaseLoRAModule):
-            if parent_layer.lora_module is not None:
+        if isinstance(layer, BaseDoRAModule):
+            if parent_layer.dora_module is not None:
                 # Check if already merged
-                parent_layer.module = parent_layer.lora_module.merge(
+                parent_layer.module = parent_layer.dora_module.merge(
                     parent_layer.module, inplace=inplace
                 )
 
@@ -185,11 +181,11 @@ def merge_lora(module: Union[Type, "LoRA"], inplace: bool = False):
     return out
 
 
-def remove_lora(module: Union[Type, LoRA], inplace: bool = False):
-    """Remove all LORA modules from the model."""
+def remove_dora(module: Union[Type, DoRA], inplace: bool = False):
+    """Remove all DoRA modules from the model."""
     out = module if inplace else copy.deepcopy(module)
 
-    # Remove LoRA parent module
+    # Remove DoRA parent module
     out = out.module
 
     # List to save the attributes to modify

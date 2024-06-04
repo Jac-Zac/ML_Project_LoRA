@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from tinygrad import Tensor, nn
 
-from .base import BaseLoRAModule
+from .base import BaseDoRAModule
 
 
-class LinearLoRAModule(BaseLoRAModule):
+class LinearDoRAModule(BaseDoRAModule):
     def __init__(
         self,
         in_features: int,
@@ -20,8 +20,8 @@ class LinearLoRAModule(BaseLoRAModule):
         self.out_features = out_features
         self.rank = rank
 
-        # Define Linear projections for LoRA layers
-        # NOTE: The original LoRA paper recommends multiplying the output of 'in_proj'
+        # Define Linear projections for DoRA layers
+        # NOTE: The original DoRA paper recommends multiplying the output of 'in_proj'
         # by (alpha / rank).  This adds more computation to the forward pass, and it's
         # mathematically equivalent to scaling 'in_proj' by (alpha / rank) ahead of
         self.in_proj = Tensor.kaiming_uniform(in_features, rank, requires_grad=True) * (
@@ -59,12 +59,12 @@ class LinearLoRAModule(BaseLoRAModule):
 
         # Avoid tracking the gradient since there is no need for it in the merging
         with Tensor.train():
-            # lora_weight = Tensor.einsum("i r, r o -> o i", self.in_proj, self.out_proj)
-            lora_weight = (self.in_proj @ self.out_proj).transpose(1, 0)
+            # dora_weight = Tensor.einsum("i r, r o -> o i", self.in_proj, self.out_proj)
+            dora_weight = (self.in_proj @ self.out_proj).transpose(1, 0)
 
             # Update the weights in place
             if inplace:
-                module.weight += lora_weight
+                module.weight += dora_weight
                 return module
 
             # Update the weights of a new Layer
@@ -73,7 +73,7 @@ class LinearLoRAModule(BaseLoRAModule):
                 out_features=out_features,
                 bias=module.bias is not None,
             )
-            out.weight = module.weight + lora_weight
+            out.weight = module.weight + dora_weight
             out.bias = module.bias
             return out
 
