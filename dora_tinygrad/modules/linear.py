@@ -49,33 +49,7 @@ class LinearDoRAModule(BaseDoRAModule):
         return x @ self.out_proj
 
     def merge(self, module: nn.Linear, inplace: bool = False) -> nn.Linear:
-        # einstein notation:
-        # - i: input features
-        # - o: output features
-        # - r: rank
-
-        # Get the shape of the Linear Layer
-        out_features, in_features = module.weight.shape
-
-        # Avoid tracking the gradient since there is no need for it in the merging
-        with Tensor.train():
-            # dora_weight = Tensor.einsum("i r, r o -> o i", self.in_proj, self.out_proj)
-            dora_weight = (self.in_proj @ self.out_proj).transpose(1, 0)
-
-            # Update the weights in place
-            if inplace:
-                module.weight += dora_weight
-                return module
-
-            # Update the weights of a new Layer
-            out = nn.Linear(
-                in_features=in_features,
-                out_features=out_features,
-                bias=module.bias is not None,
-            )
-            out.weight = module.weight + dora_weight
-            out.bias = module.bias
-            return out
+        return NotImplemented
 
     @property
     def weight(self) -> Tensor:

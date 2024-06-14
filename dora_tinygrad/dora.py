@@ -155,54 +155,8 @@ def disable_dora(module: Union[Type, DoRA]) -> None:
 
 
 def merge_dora(module: Union[Type, "DoRA"], inplace: bool = False):
-    out = module if inplace else copy.deepcopy(module)
-    out = out.module
-
-    for name in nn.state.get_state_dict(out):
-        name = name.split(".")
-        # Get layer and parent_layer
-        parent_layer = get_nested_attr(out, name[:-2])
-
-        if hasattr(parent_layer, name[-2]):
-            layer = getattr(parent_layer, name[-2])
-        else:
-            # Since it has already been removed
-            continue
-
-        if isinstance(layer, BaseDoRAModule):
-            if parent_layer.dora_module is not None:
-                # Check if already merged
-                parent_layer.module = parent_layer.dora_module.merge(
-                    parent_layer.module, inplace=inplace
-                )
-
-                setattr(out, name[0], parent_layer.module)
-
-    return out
+    return NotImplemented
 
 
 def remove_dora(module: Union[Type, DoRA], inplace: bool = False):
-    """Remove all DoRA modules from the model."""
-    out = module if inplace else copy.deepcopy(module)
-
-    # Remove DoRA parent module
-    out = out.module
-
-    # List to save the attributes to modify
-    attributes_to_modify = []
-
-    for name in nn.state.get_state_dict(out):
-        # Get the layer based on the name recursively getting the correct attribuet
-        layer = get_nested_attr(out, name.split(".")[:-1])
-        if isinstance(layer, nn.Linear):
-            # Add the attribute name to the list to be modified
-            attributes_to_modify.append((name.split(".module")[0], layer))
-
-    # Modify the attributes outside the loop to avoid issues with getattr
-    for name, layer in attributes_to_modify:
-        # NOTE: This is an example:
-        # And we set it equal to the current layer:
-        # out.l1 = out.l1.module
-        setattr(out, name, layer)
-
-    return out
+    return NotImplemented

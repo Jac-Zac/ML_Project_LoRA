@@ -1,26 +1,8 @@
 #!/usr/bin/env python3
-import numpy as np
 from tinygrad import Tensor, nn
 
 from dora_tinygrad import DoRA
 from examples.utils import evaluate, fetch_mnist, train
-
-# FIX:: Sequential doesn't work because the projection layers are placed after the list
-
-# class TinyNet:
-#     def __init__(self):
-#         self.layers: List[Callable[[Tensor], Tensor]] = [
-#             nn.Linear(784, 784 * 4, bias=True),
-#             Tensor.leakyrelu,
-#             nn.Linear(784 * 4, 784, bias=False),
-#             Tensor.leakyrelu,
-#             nn.Linear(784, 128, bias=False),
-#             Tensor.leakyrelu,
-#             nn.Linear(128, 10, bias=False),
-#         ]
-#
-#     def __call__(self, x: Tensor) -> Tensor:
-#         return x.sequential(self.layers)
 
 
 class TinyNet:
@@ -77,39 +59,6 @@ if __name__ == "__main__":
     print("\033[92mModel predictions when not modified\033[0m")
     print(model(x).numpy())
 
-    # Get predictions for the dora model
+    # Get predictions for the Dora model
     print("\033[94mdora model predictions:\033[0m")
     print(dora_model(x).numpy())
-
-    print("\033[92mModel predictions after I disable dora\033[0m")
-    dora_model.disable_dora()
-    print(dora_model(x).numpy())
-
-    print("\033[93mModel predictions after I re-enable dora\033[0m")
-    dora_model.enable_dora()
-    print(dora_model(x).numpy())
-
-    # Merge dora
-    new_model = dora_model.merge_dora(inplace=False)
-
-    print("\033[91mModel prediction after I merged dora\033[0m")
-    print(new_model(x).numpy())
-
-    print(
-        f"\nState dict after I have removed dora: {nn.state.get_state_dict(new_model)}"
-    )
-
-    # Remove model
-    # original_model = dora_model.remove_dora(inplace=False)
-    #
-    # print("\033[91mModel prediction after I removed dora\033[0m")
-    # print(original_model(x).numpy())
-    #
-    # print(
-    #     f"\nState dict after I have removed dora: {nn.state.get_state_dict(original_model)}"
-    # )
-
-    #
-    # NOTE: new_model has the same type as the original model!  Inference is just as fast as in the original model.
-    # assert isinstance(new_model, TinyNet)
-    # """
