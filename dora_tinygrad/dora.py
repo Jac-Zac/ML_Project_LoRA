@@ -40,9 +40,19 @@ class DoRA:
         # Enable the gradient again
         Tensor.no_grad = False
 
-        # IF dora is enable also add the dora
+        # If DoRA is enable also add the DoRA
         if self.enabled and self.dora_module is not None:
-            y = y + self.dora_module(x)
+            lora_output = y + self.dora_module(x)
+
+            # Divide by the normalized output
+            y = lora_output / Tensor.sqrt(Tensor.sum(lora_output**2))
+
+            print(y)
+            print(y.shape)
+            print(self.dora_module.m)
+            print(self.dora_module.m.shape)
+            # Multiply by the magnitude vector
+            y = self.dora_module.m * y
 
         return y
 
@@ -80,8 +90,14 @@ class DoRA:
         # Get the input and output size
         out_size, in_size = module.weight.shape
 
+        # Do not track the gradient for the creation of this magnitude vector
+        Tensor.no_grad = True
+        # magnitude = Tensor.sqrt(Tensor.sum(module.weight**2, axis=0, keepdim=True))
+        magnitude = Tensor.sqrt(Tensor.sum(module.weight**2, axis=1, keepdim=False))
+        Tensor.no_grad = False
+
         # Initialize a new DoRA layer
-        dora_module = LinearDoRAModule(in_size, out_size, rank=rank)
+        dora_module = LinearDoRAModule(magnitude, in_size, out_size, rank=rank)
         return DoRA(module, dora_module)
 
     # Actual implementation of from module

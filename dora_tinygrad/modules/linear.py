@@ -8,6 +8,7 @@ from .base import BaseDoRAModule
 class LinearDoRAModule(BaseDoRAModule):
     def __init__(
         self,
+        m: Tensor,
         in_features: int,
         out_features: int,
         rank: int,
@@ -16,6 +17,8 @@ class LinearDoRAModule(BaseDoRAModule):
         alpha: float = 1.0,
         dropout: float = 0.0,
     ):
+
+        self.m = m
         self.in_features = in_features
         self.out_features = out_features
         self.rank = rank
@@ -45,7 +48,7 @@ class LinearDoRAModule(BaseDoRAModule):
         # Apply dropout
         x = Tensor.dropout(x, p=self.dropout_prob)
 
-        # Multiply by output projection layer
+        # Output of the LoRA layer
         return x @ self.out_proj
 
     def merge(self, module: nn.Linear, inplace: bool = False) -> nn.Linear:
