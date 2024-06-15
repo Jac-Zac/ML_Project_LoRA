@@ -89,7 +89,9 @@ class DoRA:
         # Tensor.no_grad = False
 
         # Initialize a new DoRA layer
-        dora_module = LinearDoRAModule(magnitude, in_size, out_size, rank=rank)
+        dora_module = LinearDoRAModule(
+            magnitude, in_size, out_size, rank=rank, linear_layer_weights=module.weight
+        )
         return DoRA(module, dora_module)
 
     # Actual implementation of from module
