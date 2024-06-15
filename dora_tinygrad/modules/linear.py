@@ -19,6 +19,9 @@ class LinearDoRAModule(BaseDoRAModule):
     ):
 
         self.m = m
+        # Testing option
+        # self.m = Tensor.ones(1, out_features, requires_grad=True)
+
         self.in_features = in_features
         self.out_features = out_features
         self.rank = rank
@@ -49,7 +52,18 @@ class LinearDoRAModule(BaseDoRAModule):
         x = Tensor.dropout(x, p=self.dropout_prob)
 
         # Output of the LoRA layer
-        return x @ self.out_proj
+        lora_output = x @ self.out_proj
+        # return x @ self.out_proj
+
+        # Normalization
+        lora_output_norm = lora_output / Tensor.sqrt(
+            Tensor.sum(lora_output, axis=0, keepdim=True)
+        )
+
+        # Rescaled output with the magnitude
+        dora_output = self.m * lora_output_norm
+
+        return dora_output
 
     def merge(self, module: nn.Linear, inplace: bool = False) -> nn.Linear:
         return NotImplemented
