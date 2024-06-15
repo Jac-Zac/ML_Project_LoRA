@@ -44,15 +44,20 @@ class DoRA:
         if self.enabled and self.dora_module is not None:
             lora_output = y + self.dora_module(x)
 
+            # TODO: I shouldn't apply the normalization to the multiplication with the input but just the weights + lora
+            # Maybe I can use the merged output from the lora implementation and do something like that
             # Divide by the normalized output
-            y = lora_output / Tensor.sqrt(Tensor.sum(lora_output**2))
+            column_norm = Tensor.sqrt(Tensor.sum(lora_output**2, axis=0, keepdim=True))
+
+            # y = lora_output / column_norm
+            y = lora_output
 
             print(y)
             print(y.shape)
             print(self.dora_module.m)
             print(self.dora_module.m.shape)
             # Multiply by the magnitude vector
-            y = self.dora_module.m * y
+            # y = self.dora_module.m * y
 
         return y
 
@@ -94,6 +99,7 @@ class DoRA:
         Tensor.no_grad = True
         # magnitude = Tensor.sqrt(Tensor.sum(module.weight**2, axis=0, keepdim=True))
         magnitude = Tensor.sqrt(Tensor.sum(module.weight**2, axis=1, keepdim=False))
+        print(magnitude.numpy())
         Tensor.no_grad = False
 
         # Initialize a new DoRA layer
