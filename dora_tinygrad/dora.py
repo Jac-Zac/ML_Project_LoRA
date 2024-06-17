@@ -44,7 +44,9 @@ class DoRA:
         if self.enabled and self.dora_module is not None:
             y = y + self.dora_module(x)
 
-        return y
+        print(self.dora_module.m.numpy())
+        # Multiply the module by the magnitude
+        return self.dora_module.m @ y
 
     # I have to only return the dora parameters
     def parameters(self):
@@ -81,17 +83,20 @@ class DoRA:
         out_size, in_size = module.weight.shape
 
         # Do not track the gradient for the creation of this magnitude vector
-        # Tensor.no_grad = True
+        Tensor.no_grad = True
         # magnitude = Tensor.sqrt(Tensor.sum(module.weight**2, axis=0, keepdim=True))
         # This reqiures grad
         # HACK: This requires grad but should not be connected with the weights
-        magnitude = Tensor.sqrt(Tensor.sum(module.weight**2, axis=1, keepdim=False))
-        # Tensor.no_grad = False
+        magnitude = Tensor.sqrt(Tensor.sum(module.weight**2, axis=1, keepdim=True))
+
+        # Scale the weights to be normalized
+        module.weight = module.weight / magnitude
+
+        Tensor.no_grad = False
 
         # Initialize a new DoRA layer
-        dora_module = LinearDoRAModule(
-            magnitude, in_size, out_size, rank=rank, linear_layer_weights=module.weight
-        )
+        dora_module = LinearDoRAModule(magnitude, in_size, out_size, rank=rank)
+
         return DoRA(module, dora_module)
 
     # Actual implementation of from module
