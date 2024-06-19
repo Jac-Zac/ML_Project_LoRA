@@ -42,11 +42,14 @@ class DoRA:
 
         # If DoRA is enable also add the DoRA
         if self.enabled and self.dora_module is not None:
+            # Add lora output
             y = y + self.dora_module(x)
 
-        print(self.dora_module.m.numpy())
+            # Rescale the output to get the complete dora output
+            y = self.dora_module.m.mean(axis=1).unsqueeze(0) * y
+
         # Multiply the module by the magnitude
-        return self.dora_module.m @ y
+        return y
 
     # I have to only return the dora parameters
     def parameters(self):
@@ -84,12 +87,13 @@ class DoRA:
 
         # Do not track the gradient for the creation of this magnitude vector
         Tensor.no_grad = True
-        # magnitude = Tensor.sqrt(Tensor.sum(module.weight**2, axis=0, keepdim=True))
-        # This reqiures grad
-        # HACK: This requires grad but should not be connected with the weights
-        magnitude = Tensor.sqrt(Tensor.sum(module.weight**2, axis=1, keepdim=True))
+        # Scale by the magnitude to get the direction weights
 
-        # Scale the weights to be normalized
+        # I want this to be detached from the computational graph
+        magnitude = Tensor.sqrt(
+            Tensor.sum(module.weight**2, axis=1, keepdim=True)
+        ).detach()
+
         module.weight = module.weight / magnitude
 
         Tensor.no_grad = False

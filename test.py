@@ -47,30 +47,19 @@ if __name__ == "__main__":
         f"We can see that: {original_parameters = }, dora_params = {dora_parameters = }, thus the model needs to update {(dora_parameters / original_parameters) * 100:.2f}% of the original parameters in this example.\n"
     )
 
-    # for _ in range(epochs):
-    #     optimizer = nn.optim.Adam(dora_model.parameters(), lr=lr)
-    #     # optimizer = nn.optim.Adam(
-    #     #     [
-    #     #         dora_model.module.l1.dora_module.in_proj,
-    #     #         dora_model.module.l1.dora_module.out_proj,
-    #     #         dora_model.module.l2.dora_module.in_proj,
-    #     #         dora_model.module.l2.dora_module.in_proj,
-    #     #     ],
-    #     #     lr=lr,
-    #     # )
-    #     train(dora_model, X_train, Y_train, optimizer, steps=steps, BS=BS)
-    #     accuracy, Y_test_pred = evaluate(
-    #         dora_model, X_test, Y_test, return_predict=True
-    #     )
-    #     lr /= 1.2
-    #
-    # # Testing things out
-    # # Defining the random tensor to pass through the models
-    #
-    # # NOTE: If I only compute the output of the model here it never realized
-    # print("\033[92mModel predictions when not modified\033[0m")
-    # print(model(x).numpy())
-    #
-    # # Get predictions for the Dora model
-    # print("\033[94mdora model predictions:\033[0m")
-    # print(dora_model(x).numpy())
+    for _ in range(epochs):
+        optimizer = nn.optim.Adam(dora_model.parameters(), lr=lr)
+        train(dora_model, X_train, Y_train, optimizer, steps=steps, BS=BS)
+        accuracy, Y_test_pred = evaluate(
+            dora_model, X_test, Y_test, return_predict=True
+        )
+        lr /= 1.2
+
+    # Testing things out
+    # Defining the random tensor to pass through the models
+    print("\033[92mModel predictions when not modified\033[0m")
+    print(model(x).numpy())
+
+    # Get predictions for the Dora model
+    print("\033[94mdora model predictions:\033[0m")
+    print(dora_model(x).numpy())
