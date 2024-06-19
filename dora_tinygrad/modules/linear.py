@@ -18,16 +18,15 @@ class LinearDoRAModule(BaseDoRAModule):
         dropout: float = 0.0,
     ):
 
-        self.m = m
-        # Testing option
-        # self.m = Tensor.ones(1, out_features, requires_grad=True)
+        # Get the magnitude
+        self.magnitude = m
 
         self.in_features = in_features
         self.out_features = out_features
         self.rank = rank
 
         # Define Linear projections for DoRA layers
-        # NOTE: The original DoRA paper recommends multiplying the output of 'in_proj'
+        # NOTE: The original LoRA paper recommends multiplying the output of 'in_proj'
         # by (alpha / rank).  This adds more computation to the forward pass, and it's
         # mathematically equivalent to scaling 'in_proj' by (alpha / rank) ahead of
         self.in_proj = Tensor.kaiming_uniform(in_features, rank, requires_grad=True) * (

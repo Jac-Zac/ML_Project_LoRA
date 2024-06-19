@@ -46,7 +46,7 @@ class DoRA:
             y = y + self.dora_module(x)
 
             # Rescale the output to get the complete dora output
-            y = self.dora_module.m.mean(axis=1).unsqueeze(0) * y
+            y = self.dora_module.magnitude.mean(axis=1).unsqueeze(0) * y
 
         # Multiply the module by the magnitude
         return y
@@ -88,14 +88,12 @@ class DoRA:
         # Do not track the gradient for the creation of this magnitude vector
         Tensor.no_grad = True
         # Scale by the magnitude to get the direction weights
-
         # I want this to be detached from the computational graph
         magnitude = Tensor.sqrt(
             Tensor.sum(module.weight**2, axis=1, keepdim=True)
         ).detach()
 
         module.weight = module.weight / magnitude
-
         Tensor.no_grad = False
 
         # Initialize a new DoRA layer
