@@ -1,56 +1,109 @@
-# ML Project LoRA
+# LoRA & DoRA in TinyGrad
 
-View the computation graph:
+This project demonstrates how to implement and apply **LoRA (Low-Rank Adaptation)** and **DoRA (Direct Output Rank Adaptation)** techniques in [TinyGrad](https://github.com/geohot/tinygrad). These methods allow efficient fine-tuning of deep learning models by injecting low-rank adapters into linear layers.
 
-```
-GRAPH=1 ./testing.py
-```
+---
 
-## Alternative
+## 📊 View Computation Graph
 
-GaLore, New more efficient way to do it we compute the gradient approximation. You can look at missis coffe bean video. SVD
-
-### Summary
-
-This is a simple python implementation of a vector store that showcase the ability to use an embedding model to store documents in an high dimensional vector space, and do similarity search to retrieve the most relevant documents. Furthermore it showcase how this can then be used to do RAG with an LLM like mistral without the need of libraries like Langchain or LlamaIndex
-
-### Description of the directory
-
-Everything relevant to the implementation is explained and implemented inside a .ipn ... file -> this
-
-### Installation
-
-- Install [Ollama](https://ollama.com/) for the RAG
-
-- Install the model we are using:
+To view the computation graph of the model:
 
 ```bash
-ollama pull mistral
+GRAPH=1 ./test.py
 ```
 
-#### Clone the repo and move inside it
+---
+
+## 🧠 What are LoRA & DoRA?
+
+- **LoRA** allows you to fine-tune only a small number of trainable parameters by inserting low-rank matrices into pre-trained models, preserving the original weights.
+- **DoRA** is a more recent technique that directly adapts the output ranks for efficient fine-tuning with minimal overhead.
+
+Watch [Miss Coffee Bean's video](https://www.youtube.com/@misscoffeebean) for a friendly explanation and motivation behind these approaches.
+
+---
+
+## 📂 Project Structure
+
+```
+.
+├── dora_tinygrad/           # DoRA implementation
+│   └── modules/             # Base and linear module classes
+├── lora_tinygrad/           # LoRA implementation
+│   └── modules/             # Base and linear module classes
+├── examples/                # Example scripts and utils
+│   ├── example_lora.py      # End-to-end LoRA training + finetuning
+│   ├── example_dora.py      # End-to-end DoRA training + finetuning
+│   ├── mnist_example.ipynb  # Notebook to play with MNIST + LoRA
+│   ├── test_lora.py         # Graph/debugging script for LoRA
+│   └── utils.py             # Training, evaluation, misc helpers
+├── test.py                  # Entry point for testing LoRA/DoRA
+└── README.md                # You're here!
+```
+
+---
+
+## 🚀 How to Run
+
+### 1. Clone the Repo
 
 ```bash
-git clone https://github.com/Jac-Zac/IR_Vector_Store_RAG && cd https://github.com/Jac-Zac/IR_Vector_Store_RA
+git clone https://github.com/your-username/tinygrad-lora-dora
+cd tinygrad-lora-dora
 ```
 
-##### Set up a Python virtual environment
+### 2. Set up Virtual Environment (Recommended)
 
 ```bash
 python -m venv .env
 source .env/bin/activate
 ```
 
-> If you are having problems with jupyter
-> `ipython kernel install --name "local-venv-kernel" --user`
+> Jupyter issues? Run: `ipython kernel install --name "local-venv-kernel" --user`
 
-#### Install dependencies
+### 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Data for RAG
+---
 
-- https://arxiv.org/pdf/2201.02177.pdf
-- https://arxiv.org/pdf/1706.03762.pdf
+## 🧪 Try the Examples
+
+### Run LoRA Example:
+
+```bash
+python examples/example_lora.py
+```
+
+### Run DoRA Example:
+
+```bash
+python examples/example_dora.py
+```
+
+---
+
+## 📘 Notes
+
+- This project **does not use external libraries** like `peft`, `transformers`, or `accelerate`. It is meant to be educational and minimal.
+- TinyGrad is a great environment to understand low-level ML concepts. We leverage this simplicity to explain and explore LoRA and DoRA directly in the core logic.
+
+---
+
+## 📄 References
+
+- [LoRA Paper](https://arxiv.org/abs/2106.09685)
+- [DoRA Paper](https://arxiv.org/abs/2402.09353)
+- [TinyGrad by George Hotz (geohot)](https://github.com/geohot/tinygrad)
+
+---
+
+## 🧊 License
+
+MIT License. See `LICENSE` file for details.
+
+---
+
+Happy fine-tuning with less memory! 🎉
