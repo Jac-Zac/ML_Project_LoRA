@@ -1,6 +1,6 @@
 # LoRA & DoRA in TinyGrad
 
-This project demonstrates how to implement and apply **LoRA (Low-Rank Adaptation)** and **DoRA (Direct Output Rank Adaptation)** techniques in [TinyGrad](https://github.com/geohot/tinygrad). These methods allow efficient fine-tuning of deep learning models by injecting low-rank adapters into linear layers.
+This project demonstrates how to implement and apply **LoRA (Low-Rank Adaptation)** and **DoRA (Weight-Decomposed Low-Rank Adaptation)** techniques in [TinyGrad](https://github.com/geohot/tinygrad). These methods allow efficient fine-tuning of deep learning models by injecting low-rank adapters into linear layers.
 
 ---
 
@@ -17,7 +17,12 @@ GRAPH=1 ./test.py
 ## 🧠 What are LoRA & DoRA?
 
 - **LoRA** allows you to fine-tune only a small number of trainable parameters by inserting low-rank matrices into pre-trained models, preserving the original weights.
-- **DoRA** is a more recent technique that directly adapts the output ranks for efficient fine-tuning with minimal overhead.
+- **DoRA** (**Weight-Decomposed Low-Rank Adaptation**) decomposes the pretrained weight matrix into two parts:
+
+  - **Magnitude**, which is updated directly.
+  - **Direction**, which is fine-tuned using low-rank adaptation (LoRA-style).
+
+  This hybrid approach enables DoRA to approximate full fine-tuning performance more closely while maintaining LoRA's efficiency and zero inference overhead.
 
 Watch [Miss Coffee Bean's video](https://www.youtube.com/@misscoffeebean) for a friendly explanation and motivation behind these approaches.
 
@@ -97,12 +102,6 @@ python examples/example_dora.py
 - [LoRA Paper](https://arxiv.org/abs/2106.09685)
 - [DoRA Paper](https://arxiv.org/abs/2402.09353)
 - [TinyGrad by George Hotz (geohot)](https://github.com/geohot/tinygrad)
-
----
-
-## 🧊 License
-
-MIT License. See `LICENSE` file for details.
 
 ---
 
